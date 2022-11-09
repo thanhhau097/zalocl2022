@@ -18,6 +18,15 @@ from model_args import ModelArguments
 
 logger = logging.getLogger(__name__)
 
+def freeze_model(frozen_layers, model):
+    """
+    Freeze some or all parts of the model.
+    """
+    if len(frozen_layers) > 0:
+        for name, parameter in model.named_parameters():
+            if any([name.startswith(layer) for layer in frozen_layers]):
+                print(f"{name} is freezed")
+                parameter.requires_grad_(False)
 
 def main():
     parser = HfArgumentParser((DataArguments, ModelArguments, TrainingArguments))
@@ -73,6 +82,8 @@ def main():
 
     # Initialize trainer
     model = WhisperModel(model_args.model_name)
+    # frozen_layers = ['model']
+    # freeze_model(frozen_layers, model)
     if last_checkpoint is None and model_args.resume is not None:
         logger.info(f"Loading {model_args.resume} ...")
         model.load_state_dict(torch.load(model_args.resume, "cpu"))
