@@ -75,7 +75,10 @@ def main():
     model = WhisperModel(model_args.model_name)
     if last_checkpoint is None and model_args.resume is not None:
         logger.info(f"Loading {model_args.resume} ...")
-        model.load_state_dict(torch.load(model_args.resume, "cpu"))
+        checkpoint = torch.load(model_args.resume, "cpu")
+        if "state_dict" in checkpoint:
+            checkpoint = checkpoint.pop("state_dict")
+        model.load_state_dict(checkpoint)
     trainer = CustomTrainer(
         model=model,
         args=training_args,
