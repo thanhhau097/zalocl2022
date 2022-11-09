@@ -1,5 +1,6 @@
 import json
 import os
+import random
 from typing import List, Tuple
 
 import numpy as np
@@ -8,6 +9,7 @@ import torchaudio
 import torchaudio.transforms as at
 
 import whisper
+from augment import SpecAugment
 from whisper.tokenizer import Tokenizer
 
 
@@ -46,6 +48,7 @@ class LyricDataset(torch.utils.data.Dataset):
         tokenizer: Tokenizer,
         sample_rate: int,
         is_training: bool = False,
+        min_num_words: int = 4,
     ):
         super().__init__()
 
@@ -53,6 +56,8 @@ class LyricDataset(torch.utils.data.Dataset):
         self.sample_rate = sample_rate
         self.is_training = is_training
         self.audio_paths, self.label_paths = audio_paths, label_paths
+        self.spec_aug = SpecAugment(p=0.5)
+        self.min_num_words = min_num_words
 
     def __len__(self):
         return len(self.audio_paths)
@@ -60,11 +65,6 @@ class LyricDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         audio_path = self.audio_paths[idx]
         label_path = self.label_paths[idx]
-
-        # audio
-        audio = load_wave(audio_path, sample_rate=self.sample_rate, augment=self.is_training)
-        audio = whisper.pad_or_trim(audio.flatten())
-        mel = whisper.log_mel_spectrogram(audio)
 
         with open(label_path, "r") as f:
             label = json.load(f)
@@ -78,6 +78,32 @@ class LyricDataset(torch.utils.data.Dataset):
                 starts.append(ann["s"])
                 ends.append(ann["e"])
 
+        if self.is_training and len(words) > 8 and random.random() > 0.5:
+            start_word_idx = np.random.randint(len(words) - self.min_num_words)
+            random_length = np.random.randint(self.min_num_words, len(words) - start_word_idx)
+            end_word_idx = start_word_idx + random_length
+            words = words[start_word_idx:end_word_idx]
+            start_timestamp = starts[start_word_idx]
+            end_timestamp = ends[end_word_idx - 1]
+            starts = starts[start_word_idx:end_word_idx]
+            ends = ends[start_word_idx:end_word_idx]
+            starts = [s - start_timestamp for s in starts]
+            ends = [e - start_timestamp for e in ends]
+        else:
+            start_timestamp = 0
+            end_timestamp = None
+
+        # audio
+        audio = load_wave(audio_path, sample_rate=self.sample_rate, augment=self.is_training)
+        if end_timestamp is not None:
+            ms_to_sr = self.sample_rate // 1000
+            audio = audio[:, start_timestamp * ms_to_sr : end_timestamp * ms_to_sr]
+
+        audio = whisper.pad_or_trim(audio.flatten())
+        mel = whisper.log_mel_spectrogram(audio)
+        # if self.is_training:
+        #     mel = torch.from_numpy(self.spec_aug(data=mel.numpy())["data"])
+
         max_ms = 30000  # or len of audio file
 
         separated_tokens = []
@@ -89,6 +115,10 @@ class LyricDataset(torch.utils.data.Dataset):
             tokens = self.tokenizer.encode(word)
             word_idxs += [word_idx] * len(tokens)
             separated_tokens += tokens
+            # timestamps = np.linspace(s, e, len(tokens) + 1)
+            # for i in range(len(timestamps) - 1):
+            #     separated_starts.append(timestamps[i] / max_ms)
+            #     separated_ends.append(timestamps[i + 1] / max_ms)
             separated_starts += [s / max_ms] * len(tokens)
             separated_ends += [e / max_ms] * len(tokens)
 
