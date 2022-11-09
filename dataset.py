@@ -159,7 +159,7 @@ class DataCollatorWithPadding:
         # TODO: change end of token id
         dec_input_ids = [
             # np.pad(e, (0, max_label_len - e_len), "constant", constant_values=50257)
-            np.pad(e, (0, max_label_len - e_len), "constant", constant_values=0)  # Helsinki-NLP/opus-mt-vi-en
+            np.pad(e, (0, max_label_len - e_len), "constant", constant_values=53738)  # Helsinki-NLP/opus-mt-vi-en
             for e, e_len in zip(dec_input_ids, dec_input_ids_length)
         ]  # 50257 is eot token id
         word_idxs = [
