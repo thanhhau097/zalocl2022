@@ -8,6 +8,7 @@ import transformers
 from sklearn.model_selection import train_test_split
 from transformers import HfArgumentParser, TrainingArguments, set_seed
 from transformers.trainer_utils import get_last_checkpoint, is_main_process
+from transformers import AutoTokenizer
 
 import whisper
 from data_args import DataArguments
@@ -59,7 +60,8 @@ def main():
     set_seed(training_args.seed)
 
     woptions = whisper.DecodingOptions(language="vi", without_timestamps=True)
-    wtokenizer = whisper.get_tokenizer(True, language="vi", task=woptions.task)
+    # wtokenizer = whisper.get_tokenizer(True, language="vi", task=woptions.task)
+    wtokenizer = AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-vi-en")
     audio_paths, label_paths = get_audio_label_paths(
         data_args.audio_folder, data_args.label_folder
     )

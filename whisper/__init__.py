@@ -122,6 +122,6 @@ def load_model(
 
     dims = ModelDimensions(**checkpoint["dims"])
     model = Whisper(dims)
-    model.load_state_dict(checkpoint["model_state_dict"])
+    model.load_state_dict(checkpoint["model_state_dict"], strict=False)
 
     return model.to(device)

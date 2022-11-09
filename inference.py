@@ -5,10 +5,12 @@ from collections import defaultdict
 import numpy as np
 import torch
 from tqdm import tqdm
+from transformers import AutoTokenizer
 
 import whisper
 from dataset import load_wave
 from model import WhisperModel
+from utils import clean_word
 
 SAMPLE_RATE = 16000
 TEST_AUDIO_FOLDER = "./data/public_test/songs/"
@@ -18,7 +20,8 @@ SUBMISSION_FOLDER = "./data/submissions/"
 
 torch.set_grad_enabled(False)
 woptions = whisper.DecodingOptions(language="vi", without_timestamps=True)
-wtokenizer = whisper.get_tokenizer(True, language="vi", task=woptions.task)
+# wtokenizer = whisper.get_tokenizer(True, language="vi", task=woptions.task)
+wtokenizer = AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-vi-en")
 model = WhisperModel("base")
 checkpoint = torch.load("wbase/checkpoint-5733/pytorch_model.bin", "cpu")
 model.load_state_dict(checkpoint)
@@ -43,7 +46,7 @@ for audio_name in tqdm(os.listdir(TEST_AUDIO_FOLDER)):
     words = []
     for segment in template:
         for chunk in segment["l"]:
-            words.append(chunk["d"].lower())
+            words.append(clean_word(chunk["d"].lower()))
 
     max_ms = 30000  # or len of audio file
 
@@ -68,7 +71,7 @@ for audio_name in tqdm(os.listdir(TEST_AUDIO_FOLDER)):
         word_ids_dict = defaultdict(list)
 
         for token_id, word_id, (s, e) in zip(dec_input_ids[i], word_idxs[i], res):
-            token = wtokenizer.decode(token_id)
+            token = wtokenizer.decode([token_id])
             prediction[str(word_id) + token] = [s.item(), e.item()]
             # print(token, s.item() * max_ms, e.item() * max_ms)
             words_dict[word_id].append(token)
@@ -113,7 +116,7 @@ for audio_name in tqdm(os.listdir(TEST_AUDIO_FOLDER)):
             s, e = output_times.pop(0)
             word = output_words.pop(0)
 
-            if word != chunk["d"].lower():
+            if word != clean_word(chunk["d"].lower()):
                 chunk_words = chunk["d"].split()
                 try:
                     chunk_word = chunk_words.pop(0)

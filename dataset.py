@@ -11,6 +11,7 @@ import torchaudio.transforms as at
 import whisper
 from augment import SpecAugment
 from whisper.tokenizer import Tokenizer
+from utils import clean_word
 
 
 def get_audio_label_paths(audio_folder: str, label_folder: str) -> Tuple[List[str], List[str]]:
@@ -45,7 +46,7 @@ class LyricDataset(torch.utils.data.Dataset):
         self,
         audio_paths: List[str],
         label_paths: List[str],
-        tokenizer: Tokenizer,
+        tokenizer,
         sample_rate: int,
         is_training: bool = False,
         min_num_words: int = 4,
@@ -74,7 +75,7 @@ class LyricDataset(torch.utils.data.Dataset):
         ends = []
         for segment in label:
             for ann in segment["l"]:
-                words.append(ann["d"].lower())
+                words.append(clean_word(ann["d"].lower()))
                 starts.append(ann["s"])
                 ends.append(ann["e"])
 
@@ -112,7 +113,7 @@ class LyricDataset(torch.utils.data.Dataset):
         word_idxs = []
 
         for (word_idx, word), s, e in zip(enumerate(words), starts, ends):
-            tokens = self.tokenizer.encode(word)
+            tokens = self.tokenizer.encode(word, add_special_tokens=False)
             word_idxs += [word_idx] * len(tokens)
             separated_tokens += tokens
             # timestamps = np.linspace(s, e, len(tokens) + 1)
