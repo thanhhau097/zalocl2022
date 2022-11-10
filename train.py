@@ -68,6 +68,12 @@ def main():
     train_audios, val_audios, train_labels, val_labels = train_test_split(
         audio_paths, label_paths, test_size=0.05, random_state=42
     )
+    if data_args.use_external:
+        external_audios, external_labels = get_audio_label_paths(
+            data_args.external_audio_paths, data_args.external_label_paths
+        )
+        train_audios.extend(external_audios)
+        train_labels.extend(external_labels)
     train_dataset = LyricDataset(
         train_audios, train_labels, wtokenizer, data_args.sample_rate, is_training=True
     )
