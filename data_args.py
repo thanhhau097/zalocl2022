@@ -19,6 +19,6 @@ class DataArguments:
         default="/home/thanh/shared_disk/thanh/chunk_labels/",
         metadata={"help": "External label folder"},
     )
-    use_external: bool = field(default=True, metadata={"help": "Use external data"})
+    use_external: bool = field(default=False, metadata={"help": "Use external data"})
     sample_rate: int = field(default=16000, metadata={"help": "Audio sample rate"})
     max_length: int = field(default=480000, metadata={"help": "Audio max length"})
