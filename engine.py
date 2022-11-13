@@ -11,7 +11,7 @@ from model import CustomLoss, WhisperModel
 
 class CustomTrainer(Trainer):
     def compute_loss(self, model: WhisperModel, inputs: Dict, return_outputs=False):
-        outputs = model(inputs["input_ids"], inputs["dec_input_ids"])
+        outputs = model(inputs["input_ids"], inputs["dec_input_ids"], inputs["word_idxs"])
         loss_fct = CustomLoss()
         labels = inputs.get("labels")
         loss = loss_fct(outputs, labels)

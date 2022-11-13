@@ -173,15 +173,38 @@ class TextDecoder(nn.Module):
         mask = torch.empty(n_ctx, n_ctx).fill_(-np.inf).triu_(1)
         self.register_buffer("mask", mask, persistent=False)
 
-    def forward(self, x: Tensor, xa: Tensor, kv_cache: Optional[dict] = None):
+    def forward(self, x: Tensor, xa: Tensor, word_idxs, kv_cache: Optional[dict] = None):
         """
         x : torch.LongTensor, shape = (batch_size, <= n_ctx)
             the text tokens
         xa : torch.Tensor, shape = (batch_size, n_mels, n_audio_ctx)
             the encoded audio features to be attended on
+        word_idxs: index of word that tokens belong to.
         """
         offset = next(iter(kv_cache.values())).shape[1] if kv_cache else 0
-        x = self.token_embedding(x) + self.positional_embedding[offset : offset + x.shape[-1]]
+        batch_token_embs = self.token_embedding(x)
+
+        batch_word_embs = []
+        
+        for i, (word_idx, token_embs) in enumerate(zip(word_idxs, batch_token_embs)):
+            max_word_idx = word_idx.max().item()
+
+            word_embs = []
+            for index in range(max_word_idx + 1):
+                token_ids = (word_idx == index).nonzero(as_tuple=True)[0]
+                word_token_embs = token_embs.index_select(0, token_ids)
+                word_embs.append(word_token_embs.mean(dim=0))
+
+            batch_word_embs.append(word_embs)
+
+        # pad batch word embeddings to make it to be a tensor
+        max_idx = word_idxs.max().item() + 1
+        batch_word_embs = [
+            F.pad(torch.stack(word_embs), (0,0,0,max_idx-len(word_embs))) for word_embs in batch_word_embs
+        ]
+
+        x = torch.stack(batch_word_embs)
+        x = x + self.positional_embedding[offset : offset + x.shape[1]]
         x = x.to(xa.dtype)
 
         for block in self.blocks:
