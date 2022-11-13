@@ -40,6 +40,13 @@ def load_wave(wave_path, sample_rate: int = 16000, augment=False) -> torch.Tenso
     return waveform
 
 
+def clean_word(s):
+    charset = "!\"$'()*+,-.:?\\_̣̀́̃’“”…"
+    for c in charset:
+        s = s.replace(c, "")
+    return s
+
+
 class LyricDataset(torch.utils.data.Dataset):
     def __init__(
         self,
@@ -74,9 +81,9 @@ class LyricDataset(torch.utils.data.Dataset):
         ends = []
         for segment in label:
             for ann in segment["l"]:
-                words.append(ann["d"].lower())
-                starts.append(ann["s"])
-                ends.append(ann["e"])
+                words.append(clean_word(ann["d"].lower()))
+                starts.append(int(ann["s"]))
+                ends.append(int(ann["e"]))
 
         if self.is_training and len(words) > 8 and random.random() > 0.5:
             start_word_idx = np.random.randint(len(words) - self.min_num_words)

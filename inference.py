@@ -7,7 +7,7 @@ import torch
 from tqdm import tqdm
 
 import whisper
-from dataset import load_wave
+from dataset import clean_word, load_wave
 from model import WhisperModel
 
 SAMPLE_RATE = 16000
@@ -43,7 +43,7 @@ for audio_name in tqdm(os.listdir(TEST_AUDIO_FOLDER)):
     words = []
     for segment in template:
         for chunk in segment["l"]:
-            words.append(chunk["d"].lower())
+            words.append(clean_word(chunk["d"].lower()))
 
     max_ms = 30000  # or len of audio file
 
