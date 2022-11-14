@@ -81,7 +81,7 @@ class LyricDataset(torch.utils.data.Dataset):
         ends = []
         for segment in label:
             for ann in segment["l"]:
-                words.append(clean_word(ann["d"].lower()))
+                words.append(ann["d"].lower())
                 starts.append(int(ann["s"]))
                 ends.append(int(ann["e"]))
 
@@ -178,5 +178,5 @@ class DataCollatorWithPadding:
             "word_idxs": word_idxs,
         }
         batch = {k: torch.from_numpy(np.array(v)) for k, v in batch.items()}
-
+        batch["dec_input_ids"] = batch["dec_input_ids"].long()
         return batch
