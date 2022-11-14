@@ -173,17 +173,7 @@ class TextDecoder(nn.Module):
         mask = torch.empty(n_ctx, n_ctx).fill_(-np.inf).triu_(1)
         self.register_buffer("mask", mask, persistent=False)
 
-    def forward(self, x: Tensor, xa: Tensor, word_idxs, kv_cache: Optional[dict] = None):
-        """
-        x : torch.LongTensor, shape = (batch_size, <= n_ctx)
-            the text tokens
-        xa : torch.Tensor, shape = (batch_size, n_mels, n_audio_ctx)
-            the encoded audio features to be attended on
-        word_idxs: index of word that tokens belong to.
-        """
-        offset = next(iter(kv_cache.values())).shape[1] if kv_cache else 0
-        batch_token_embs = self.token_embedding(x)
-
+    def get_word_emb_from_token_embs(self, batch_token_embs, word_idxs):
         batch_word_embs = []
         
         for i, (word_idx, token_embs) in enumerate(zip(word_idxs, batch_token_embs)):
@@ -203,12 +193,32 @@ class TextDecoder(nn.Module):
             F.pad(torch.stack(word_embs), (0,0,0,max_idx-len(word_embs))) for word_embs in batch_word_embs
         ]
 
-        x = torch.stack(batch_word_embs)
+        for word_embs, token_embs in zip(batch_word_embs, batch_token_embs):
+            word_embs[:-(max_idx-len(word_embs))] = token_embs[-1]
+
+        return torch.stack(batch_word_embs)
+
+    def forward(self, x: Tensor, xa: Tensor, word_idxs, kv_cache: Optional[dict] = None):
+        """
+        x : torch.LongTensor, shape = (batch_size, <= n_ctx)
+            the text tokens
+        xa : torch.Tensor, shape = (batch_size, n_mels, n_audio_ctx)
+            the encoded audio features to be attended on
+        word_idxs: index of word that tokens belong to.
+        """
+        offset = next(iter(kv_cache.values())).shape[1] if kv_cache else 0
+        x = self.token_embedding(x)
+
         x = x + self.positional_embedding[offset : offset + x.shape[1]]
         x = x.to(xa.dtype)
 
-        for block in self.blocks:
+        batch_word_embs = self.get_word_emb_from_token_embs(x, word_idxs)
+        for i, block in enumerate(self.blocks):
             x = block(x, xa, mask=self.mask, kv_cache=kv_cache)
+
+            batch_word_embs += self.get_word_emb_from_token_embs(x, word_idxs)
+
+        x = batch_word_embs / (len(self.blocks) + 1)
 
         x = self.ln(x)
         # logits = (x @ torch.transpose(self.token_embedding.weight.to(x.dtype), 0, 1)).float()
