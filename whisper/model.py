@@ -213,12 +213,15 @@ class TextDecoder(nn.Module):
         x = x.to(xa.dtype)
 
         batch_word_embs = self.get_word_emb_from_token_embs(x, word_idxs)
-        for i, block in enumerate(self.blocks):
-            x = block(x, xa, mask=self.mask, kv_cache=kv_cache)
+        num_fusion_block = 4
 
+        for i, block in enumerate(self.blocks[:num_fusion_block]):
+            x = block(x, xa, mask=self.mask, kv_cache=kv_cache)
             batch_word_embs += self.get_word_emb_from_token_embs(x, word_idxs)
 
         x = batch_word_embs / (len(self.blocks) + 1)
+        for i, block in enumerate(self.blocks[num_fusion_block:]):
+            x = block(x, xa, mask=self.mask, kv_cache=kv_cache)
 
         x = self.ln(x)
         # logits = (x @ torch.transpose(self.token_embedding.weight.to(x.dtype), 0, 1)).float()
