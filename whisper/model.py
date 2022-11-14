@@ -213,13 +213,13 @@ class TextDecoder(nn.Module):
         x = x.to(xa.dtype)
 
         batch_word_embs = self.get_word_emb_from_token_embs(x, word_idxs)
-        num_fusion_block = 4
+        num_fusion_block = 0
 
         for i, block in enumerate(self.blocks[:num_fusion_block]):
             x = block(x, xa, mask=self.mask, kv_cache=kv_cache)
             batch_word_embs += self.get_word_emb_from_token_embs(x, word_idxs)
 
-        x = batch_word_embs / (len(self.blocks) + 1)
+        x = batch_word_embs / (num_fusion_block + 1)
         for i, block in enumerate(self.blocks[num_fusion_block:]):
             x = block(x, xa, mask=self.mask, kv_cache=kv_cache)
 
