@@ -49,7 +49,7 @@ class LyricDataset(torch.utils.data.Dataset):
         tokenizer: Tokenizer,
         sample_rate: int,
         is_training: bool = False,
-        min_num_words: int = 8,
+        min_num_words: int = 4,
     ):
         super().__init__()
 
