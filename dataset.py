@@ -78,7 +78,7 @@ class LyricDataset(torch.utils.data.Dataset):
                 starts.append(ann["s"])
                 ends.append(ann["e"])
 
-        if self.is_training and len(words) > 8 and random.random() > 0.5:
+        if self.is_training and len(words) > self.min_num_words and random.random() > 0.5:
             start_word_idx = np.random.randint(len(words) - self.min_num_words)
             random_length = np.random.randint(self.min_num_words, len(words) - start_word_idx)
             end_word_idx = start_word_idx + random_length
