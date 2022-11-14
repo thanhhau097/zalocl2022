@@ -10,6 +10,7 @@ import torchaudio.transforms as at
 
 import whisper
 from augment import SpecAugment
+from wave_augment import *
 from whisper.tokenizer import Tokenizer
 
 
@@ -48,7 +49,7 @@ class LyricDataset(torch.utils.data.Dataset):
         tokenizer: Tokenizer,
         sample_rate: int,
         is_training: bool = False,
-        min_num_words: int = 4,
+        min_num_words: int = 8,
     ):
         super().__init__()
 
@@ -56,7 +57,15 @@ class LyricDataset(torch.utils.data.Dataset):
         self.sample_rate = sample_rate
         self.is_training = is_training
         self.audio_paths, self.label_paths = audio_paths, label_paths
-        self.spec_aug = SpecAugment(p=0.5)
+        # self.spec_aug = SpecAugment(p=0.5)
+        self.wav_aug = Compose([
+            OneOf([
+                GaussianNoiseSNR(min_snr=10),
+                PinkNoiseSNR(min_snr=10)
+            ]),
+            PitchShift(max_steps=2, sr=self.sample_rate),
+            VolumeControl(mode="sine")
+        ])
         self.min_num_words = min_num_words
 
     def __len__(self):
@@ -78,7 +87,7 @@ class LyricDataset(torch.utils.data.Dataset):
                 starts.append(ann["s"])
                 ends.append(ann["e"])
 
-        if self.is_training and len(words) > 8 and random.random() > 0.5:
+        if self.is_training and len(words) > self.min_num_words and random.random() > 0.5:
             start_word_idx = np.random.randint(len(words) - self.min_num_words)
             random_length = np.random.randint(self.min_num_words, len(words) - start_word_idx)
             end_word_idx = start_word_idx + random_length
@@ -95,12 +104,16 @@ class LyricDataset(torch.utils.data.Dataset):
 
         # audio
         audio = load_wave(audio_path, sample_rate=self.sample_rate, augment=self.is_training)
+        if self.is_training:
+            audio[0] = torch.tensor(self.wav_aug(audio[0].numpy()))
+            audio[1] = torch.tensor(self.wav_aug(audio[1].numpy()))
         if end_timestamp is not None:
             ms_to_sr = self.sample_rate // 1000
             audio = audio[:, start_timestamp * ms_to_sr : end_timestamp * ms_to_sr]
 
         audio = whisper.pad_or_trim(audio.flatten())
         mel = whisper.log_mel_spectrogram(audio)
+
         # if self.is_training:
         #     mel = torch.from_numpy(self.spec_aug(data=mel.numpy())["data"])
 
