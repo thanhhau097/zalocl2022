@@ -7,20 +7,25 @@ import torch
 from tqdm import tqdm
 
 import whisper
-from dataset import load_wave
+from dataset import clean_word, load_wave
 from model import WhisperModel
 
 SAMPLE_RATE = 16000
 TEST_AUDIO_FOLDER = "./data/public_test/songs/"
 TEST_LYRICS_FOLDER = "./data/public_test/lyrics/"
 TEST_TEMPLATES_FOLDER = "./data/public_test/json_lyrics/"
-SUBMISSION_FOLDER = "./data/submissions/"
+SUBMISSION_FOLDER = "./submissions/"
 
 torch.set_grad_enabled(False)
 woptions = whisper.DecodingOptions(language="vi", without_timestamps=True)
 wtokenizer = whisper.get_tokenizer(True, language="vi", task=woptions.task)
+
 model = WhisperModel("base")
-checkpoint = torch.load("wbase/checkpoint-5733/pytorch_model.bin", "cpu")
+checkpoint = torch.load("wbase/checkpoint-11781/pytorch_model.bin", "cpu")
+
+# model = WhisperModel("medium")
+# checkpoint = torch.load("pytorch_model.bin", "cpu")
+
 model.load_state_dict(checkpoint)
 model = model.cuda()
 model.eval()

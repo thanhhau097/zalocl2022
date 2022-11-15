@@ -17,6 +17,7 @@ from model import WhisperModel
 from model_args import ModelArguments
 
 logger = logging.getLogger(__name__)
+os.environ["WANDB_DISABLED"] = "true"
 
 
 def main():
@@ -60,6 +61,34 @@ def main():
 
     woptions = whisper.DecodingOptions(language="vi", without_timestamps=True)
     wtokenizer = whisper.get_tokenizer(True, language="vi", task=woptions.task)
+    model = WhisperModel(model_args.model_name)
+
+    # word_embs = torch.load(f"{model_args.model_name}_word_embeddings.pth")
+    # token_embedding_weight = model.model.decoder.token_embedding.weight[
+    #     : len(wtokenizer.tokenizer)
+    # ]
+    # word_embedding_weight = []
+    # from tqdm import tqdm
+
+    # for word, emb in tqdm(word_embs.items()):
+    #     wtokenizer.tokenizer.add_tokens([word])
+    #     word_embedding_weight.append(emb)
+    # word_embedding_weight = torch.cat(word_embedding_weight, 0)
+    # token_embedding_weight = torch.cat([token_embedding_weight, word_embedding_weight])
+    # model.model.decoder.token_embedding = torch.nn.Embedding(
+    #     len(wtokenizer.tokenizer),
+    #     token_embedding_weight.shape[1],
+    # )
+    # model.model.decoder.token_embedding.weight = torch.nn.Parameter(token_embedding_weight)
+
+    if last_checkpoint is None and model_args.resume is not None:
+        logger.info(f"Loading {model_args.resume} ...")
+        checkpoint = torch.load(model_args.resume, "cpu")
+        if "state_dict" in checkpoint:
+            checkpoint = checkpoint.pop("state_dict")
+        model.load_state_dict(checkpoint)
+
+    # Load data
     audio_paths, label_paths = get_audio_label_paths(
         data_args.audio_folder, data_args.label_folder
     )
@@ -78,13 +107,6 @@ def main():
     val_dataset = LyricDataset(val_audios, val_labels, wtokenizer, data_args.sample_rate)
 
     # Initialize trainer
-    model = WhisperModel(model_args.model_name)
-    if last_checkpoint is None and model_args.resume is not None:
-        logger.info(f"Loading {model_args.resume} ...")
-        checkpoint = torch.load(model_args.resume, "cpu")
-        if "state_dict" in checkpoint:
-            checkpoint = checkpoint.pop("state_dict")
-        model.load_state_dict(checkpoint)
     trainer = CustomTrainer(
         model=model,
         args=training_args,

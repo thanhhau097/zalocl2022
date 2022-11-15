@@ -15,7 +15,7 @@ class WhisperModel(nn.Module):
     def __init__(self, model_name: str = "base"):
         super().__init__()
 
-        self.model = whisper.load_model(model_name)
+        self.model = whisper.load_model(model_name, device="cpu")
         # for p in self.model.encoder.parameters():
         #     p.requires_grad = False
         self.linear = nn.Sequential(nn.Linear(self.model.dims.n_text_state, 2), nn.Sigmoid())
