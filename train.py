@@ -39,8 +39,9 @@ def main():
             )
         elif last_checkpoint is not None:
             logger.info(
-                f"Checkpoint detected, resuming training at {last_checkpoint}. To avoid this behavior, change "
-                "the `--output_dir` or add `--overwrite_output_dir` to train from scratch."
+                f"Checkpoint detected, resuming training at {last_checkpoint}. To avoid this"
+                "behavior, change the `--output_dir` or add `--overwrite_output_dir` to train "
+                "from scratch."
             )
 
     # Setup logging
@@ -59,8 +60,8 @@ def main():
     # Set seed before initializing model.
     set_seed(training_args.seed)
 
-    woptions = whisper.DecodingOptions(language="vi", without_timestamps=True)
-    wtokenizer = whisper.get_tokenizer(True, language="vi", task=woptions.task)
+    woptions = whisper.DecodingOptions(without_timestamps=True)
+    wtokenizer = whisper.get_tokenizer(True, task=woptions.task)
     model = WhisperModel(model_args.model_name)
 
     # word_embs = torch.load(f"{model_args.model_name}_word_embeddings.pth")
