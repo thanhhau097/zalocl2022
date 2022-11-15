@@ -9,4 +9,5 @@ class ModelArguments:
     """
 
     model_name: str = field(default="base", metadata={"help": "Whisper model name"})
+    bce_aux: Optional[bool] = field(default=False, metadata={"help": "Use auxiliary BCE loss"})
     resume: Optional[str] = field(default=None, metadata={"help": "Path of model checkpoint"})

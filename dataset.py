@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import torchaudio
 import torchaudio.transforms as at
+from sklearn.preprocessing import MultiLabelBinarizer
 
 import whisper
 from augment import SpecAugment
@@ -65,6 +66,8 @@ class LyricDataset(torch.utils.data.Dataset):
         self.audio_paths, self.label_paths = audio_paths, label_paths
         self.spec_aug = SpecAugment(p=0.5)
         self.min_num_words = min_num_words
+        self.mlb = MultiLabelBinarizer()
+        self.mlb.fit([np.arange(3000)])
 
     def __len__(self):
         return len(self.audio_paths)
@@ -118,7 +121,7 @@ class LyricDataset(torch.utils.data.Dataset):
         audio = load_wave(audio_path, sample_rate=self.sample_rate, augment=self.is_training)
         if end_timestamp is not None:
             ms_to_sr = self.sample_rate // 1000
-            audio = audio[:, start_timestamp * ms_to_sr : end_timestamp * ms_to_sr]
+            audio = audio[:, int(start_timestamp * ms_to_sr) : int(end_timestamp * ms_to_sr)]
 
         if self.is_training and random.random() > 0.5:
             audio = audio.flip(0)
@@ -133,6 +136,7 @@ class LyricDataset(torch.utils.data.Dataset):
         separated_tokens = []
         separated_starts = []
         separated_ends = []
+        separated_multiclass = []
         word_idxs = []
 
         for (word_idx, word), s, e in zip(enumerate(words), starts, ends):
@@ -145,7 +149,19 @@ class LyricDataset(torch.utils.data.Dataset):
             #     separated_ends.append(timestamps[i + 1] / max_ms)
             separated_starts += [s / max_ms] * len(tokens)
             separated_ends += [e / max_ms] * len(tokens)
-
+            if s < 0 or e < 0:
+                s, e = 0, 1
+            if s > e:
+                s, e = e, s
+            multiclass_label = self.mlb.transform(
+                [np.arange(int(s / max_ms * 3000), int(e / max_ms * 3000) + 1)] * len(tokens)
+            )
+            if len(separated_multiclass) == 0:
+                separated_multiclass = multiclass_label
+            else:
+                separated_multiclass = np.concatenate(
+                    [separated_multiclass, multiclass_label], axis=0
+                )
         separated_tokens = separated_tokens
         starts = separated_starts
         ends = separated_ends
@@ -155,18 +171,20 @@ class LyricDataset(torch.utils.data.Dataset):
             "starts": starts,
             "ends": ends,
             "word_idxs": word_idxs,
+            "separated_multiclass": separated_multiclass,
         }
 
 
 class DataCollatorWithPadding:
-    def __call__(sefl, features):
-        input_ids, labels, dec_input_ids, word_idxs = [], [], [], []
+    def __call__(self, features):
+        input_ids, labels, dec_input_ids, word_idxs, separated_multiclass = [], [], [], [], []
 
-        for f in features:
+        for i, f in enumerate(features):
             input_ids.append(f["input_ids"])
             labels.append(np.array([f["starts"], f["ends"]]).transpose())
             dec_input_ids.append(f["dec_input_ids"])
             word_idxs.append(f["word_idxs"])
+            separated_multiclass.append(f["separated_multiclass"])
 
         input_ids = torch.concat([input_id[None, :] for input_id in input_ids])
 
@@ -174,11 +192,16 @@ class DataCollatorWithPadding:
         dec_input_ids_length = [len(e) for e in dec_input_ids]
         word_idxs_length = [len(w) for w in word_idxs]
         max_label_len = max(label_lengths + dec_input_ids_length)
-
+        max_multiclass_len = max([len(m) for m in separated_multiclass])
         labels = [
             np.concatenate([lab, np.ones((max(max_label_len - lab_len, 0), 2)) * -100])
             for lab, lab_len in zip(labels, label_lengths)
         ]
+
+        separated_multiclass_padded = np.zeros((len(features), max_multiclass_len, 3000))
+        for i, f in enumerate(separated_multiclass):
+            separated_multiclass_padded[i, : len(f)] = f
+
         dec_input_ids = [
             np.pad(e, (0, max_label_len - e_len), "constant", constant_values=50257)
             for e, e_len in zip(dec_input_ids, dec_input_ids_length)
@@ -193,6 +216,7 @@ class DataCollatorWithPadding:
             "dec_input_ids": dec_input_ids,
             "input_ids": input_ids,
             "word_idxs": word_idxs,
+            "separated_multiclass": separated_multiclass_padded,
         }
         batch = {k: torch.from_numpy(np.array(v)) for k, v in batch.items()}
         batch["dec_input_ids"] = batch["dec_input_ids"].long()

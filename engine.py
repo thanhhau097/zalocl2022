@@ -6,16 +6,32 @@ import torch
 from transformers import Trainer
 from transformers.trainer_pt_utils import nested_detach
 
-from model import CustomLoss, WhisperModel
+from model import BalancedBCE, CustomLoss, WhisperModel
 
 
 class CustomTrainer(Trainer):
     def compute_loss(self, model: WhisperModel, inputs: Dict, return_outputs=False):
-        outputs = model(inputs["input_ids"], inputs["dec_input_ids"])
+        compute_bce_loss = False
+        if hasattr(model, "module"):
+            compute_bce_loss = model.module.bce_aux
+        else:
+            compute_bce_loss = model.bce_aux
+
         loss_fct = CustomLoss()
         labels = inputs.get("labels")
-        word_idxs = inputs.get("word_idxs")
-        loss = loss_fct(outputs, labels, word_idxs)
+
+        if compute_bce_loss:
+            outputs, outputs_bce = model(inputs["input_ids"], inputs["dec_input_ids"])
+            loss_bce = BalancedBCE()
+            labels_bce = inputs.get("separated_multiclass")
+            outputs_bce = outputs_bce.view(-1, 3000)
+            labels_bce = labels_bce.view(-1, 3000)
+            loss = loss_fct(outputs, labels)
+            loss += loss_bce(outputs_bce, labels_bce) / 40
+        else:
+            outputs = model(inputs["input_ids"], inputs["dec_input_ids"])
+            loss = loss_fct(outputs, labels)
+
         if return_outputs:
             return (loss, outputs)
         return loss
@@ -72,7 +88,6 @@ def compute_word_iou(out, wtokenizer, dec_input_ids, word_idxs, labels):
         prediction = {}
         gt = {}
         words_dict = defaultdict(list)
-
         for token_id, word_id, (gts, gte), (s, e) in zip(
             dec_input_ids[i], word_idxs[i], labels[i], res
         ):

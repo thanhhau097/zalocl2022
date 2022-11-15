@@ -20,10 +20,22 @@ logger = logging.getLogger(__name__)
 os.environ["WANDB_DISABLED"] = "true"
 
 
-def main():
+def freeze_model(frozen_layers, model):
+    """
+    Freeze some or all parts of the model.
+    """
+    if len(frozen_layers) > 0:
+        for name, parameter in model.named_parameters():
+            if any([name.startswith(layer) for layer in frozen_layers]):
+                print(f"{name} is freezed")
+                parameter.requires_grad_(False)
+
+
+def main(current_fold):
     parser = HfArgumentParser((DataArguments, ModelArguments, TrainingArguments))
     data_args, model_args, training_args = parser.parse_args_into_dataclasses()
 
+    # training_args.output_dir = training_args.output_dir + f'_fold{current_fold}'
     # Detecting last checkpoint.
     last_checkpoint = None
     if (
@@ -62,7 +74,7 @@ def main():
 
     woptions = whisper.DecodingOptions(without_timestamps=True)
     wtokenizer = whisper.get_tokenizer(True, task=woptions.task)
-    model = WhisperModel(model_args.model_name)
+    model = WhisperModel(model_args.model_name, model_args.bce_aux)
 
     # word_embs = torch.load(f"{model_args.model_name}_word_embeddings.pth")
     # token_embedding_weight = model.model.decoder.token_embedding.weight[
@@ -87,7 +99,7 @@ def main():
         checkpoint = torch.load(model_args.resume, "cpu")
         if "state_dict" in checkpoint:
             checkpoint = checkpoint.pop("state_dict")
-        model.load_state_dict(checkpoint)
+        model.load_state_dict(checkpoint, strict=False)
 
     # Load data
     audio_paths, label_paths = get_audio_label_paths(
@@ -152,4 +164,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # for i in range(20):
+    #     main(i)
+    main(0)

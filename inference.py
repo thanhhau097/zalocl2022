@@ -19,13 +19,8 @@ SUBMISSION_FOLDER = "./submissions/"
 torch.set_grad_enabled(False)
 woptions = whisper.DecodingOptions(language="vi", without_timestamps=True)
 wtokenizer = whisper.get_tokenizer(True, language="vi", task=woptions.task)
-
-model = WhisperModel("base")
-checkpoint = torch.load("wbase/checkpoint-11781/pytorch_model.bin", "cpu")
-
-# model = WhisperModel("medium")
-# checkpoint = torch.load("pytorch_model.bin", "cpu")
-
+model = WhisperModel("large")
+checkpoint = torch.load("wlarge_finetune/checkpoint-7182/pytorch_model.bin", "cpu")
 model.load_state_dict(checkpoint)
 model = model.cuda()
 model.eval()
