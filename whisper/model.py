@@ -5,11 +5,11 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
+from transformers import AutoTokenizer, AutoModel
 
 from .decoding import decode as decode_function
 from .decoding import detect_language as detect_language_function
 from .transcribe import transcribe as transcribe_function
-
 
 @dataclass
 class ModelDimensions:
@@ -162,7 +162,17 @@ class TextDecoder(nn.Module):
     def __init__(self, n_vocab: int, n_ctx: int, n_state: int, n_head: int, n_layer: int):
         super().__init__()
 
-        self.token_embedding = nn.Embedding(n_vocab, n_state)
+        # self.token_embedding = nn.Embedding(n_vocab, n_state)
+        pretrained_model = AutoModel.from_pretrained("Helsinki-NLP/opus-mt-vi-en")
+        self.custom_token_embedding = nn.Embedding(53739, 512, padding_idx=1)
+        self.custom_token_embedding.weight.data = pretrained_model.state_dict()["encoder.embed_tokens.weight"]
+
+        # pretrained_model = AutoModel.from_pretrained("vinai/phobert-base")
+        # self.custom_token_embedding = nn.Embedding(64001, 768, padding_idx=1)
+        # self.custom_token_embedding.weight.data = pretrained_model.state_dict()["embeddings.word_embeddings.weight"]
+        # self.mapping = nn.Linear(768, n_state)  # for phobert model
+
+        self.custom_token_embedding.weight.requires_grad = False
         self.positional_embedding = nn.Parameter(torch.empty(n_ctx, n_state))
 
         self.blocks: Iterable[ResidualAttentionBlock] = nn.ModuleList(
@@ -181,7 +191,9 @@ class TextDecoder(nn.Module):
             the encoded audio features to be attended on
         """
         offset = next(iter(kv_cache.values())).shape[1] if kv_cache else 0
-        x = self.token_embedding(x) + self.positional_embedding[offset : offset + x.shape[-1]]
+        # x = self.token_embedding(x) + self.positional_embedding[offset : offset + x.shape[-1]]
+        x = self.custom_token_embedding(x) + self.positional_embedding[offset : offset + x.shape[-1]]
+        # x = self.mapping(self.custom_token_embedding(x)) + self.positional_embedding[offset : offset + x.shape[-1]]
         x = x.to(xa.dtype)
 
         for block in self.blocks:
