@@ -78,7 +78,7 @@ class LyricDataset(torch.utils.data.Dataset):
                 starts.append(ann["s"])
                 ends.append(ann["e"])
 
-        if self.is_training and len(words) > 8 and random.random() > 0.5:
+        if self.is_training and len(words) > self.min_num_words and random.random() > 0.5:
             start_word_idx = np.random.randint(len(words) - self.min_num_words)
             random_length = np.random.randint(self.min_num_words, len(words) - start_word_idx)
             end_word_idx = start_word_idx + random_length
@@ -122,8 +122,12 @@ class LyricDataset(torch.utils.data.Dataset):
             # for i in range(len(timestamps) - 1):
             #     separated_starts.append(timestamps[i] / max_ms)
             #     separated_ends.append(timestamps[i + 1] / max_ms)
-            separated_starts += [s / max_ms] * len(tokens)
-            separated_ends += [e / max_ms] * len(tokens)
+            # separated_starts += [s / max_ms] * len(tokens)
+            # separated_ends += [e / max_ms] * len(tokens)
+
+            # word emb = avg(token embs)
+            separated_starts += [s / max_ms]
+            separated_ends += [e / max_ms]
 
         separated_tokens = separated_tokens
         starts = separated_starts
@@ -152,18 +156,19 @@ class DataCollatorWithPadding:
         label_lengths = [len(lab) for lab in labels]
         dec_input_ids_length = [len(e) for e in dec_input_ids]
         word_idxs_length = [len(w) for w in word_idxs]
-        max_label_len = max(label_lengths + dec_input_ids_length)
+        max_label_len = max(label_lengths)
+        max_input_len = max(dec_input_ids_length)
 
         labels = [
             np.concatenate([lab, np.ones((max(max_label_len - lab_len, 0), 2)) * -100])
             for lab, lab_len in zip(labels, label_lengths)
         ]
         dec_input_ids = [
-            np.pad(e, (0, max_label_len - e_len), "constant", constant_values=50257)
+            np.pad(e, (0, max_input_len - e_len), "constant", constant_values=50257)
             for e, e_len in zip(dec_input_ids, dec_input_ids_length)
         ]  # 50257 is eot token id
         word_idxs = [
-            np.pad(w, (0, max_label_len - w_len), "constant", constant_values=-100)
+            np.pad(w, (0, max_input_len - w_len), "constant", constant_values=-100)
             for w, w_len in zip(word_idxs, word_idxs_length)
         ]
 

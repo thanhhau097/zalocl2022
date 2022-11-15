@@ -20,8 +20,8 @@ class WhisperModel(nn.Module):
         #     p.requires_grad = False
         self.linear = nn.Sequential(nn.Linear(self.model.dims.n_text_state, 2), nn.Sigmoid())
 
-    def forward(self, input_ids, dec_input_ids, starts=None, ends=None, word_idxs=None):
+    def forward(self, input_ids, dec_input_ids, word_idxs, starts=None, ends=None):
         audio_features = self.model.encoder(input_ids)
-        decoder_features = self.model.decoder(dec_input_ids, audio_features)
+        decoder_features = self.model.decoder(dec_input_ids, audio_features, word_idxs)
         out = self.linear(decoder_features)
         return out

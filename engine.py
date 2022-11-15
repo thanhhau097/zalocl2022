@@ -11,7 +11,7 @@ from model import CustomLoss, WhisperModel
 
 class CustomTrainer(Trainer):
     def compute_loss(self, model: WhisperModel, inputs: Dict, return_outputs=False):
-        outputs = model(inputs["input_ids"], inputs["dec_input_ids"])
+        outputs = model(inputs["input_ids"], inputs["dec_input_ids"], inputs["word_idxs"])
         loss_fct = CustomLoss()
         labels = inputs.get("labels")
         loss = loss_fct(outputs, labels)
@@ -67,45 +67,13 @@ def compute_metrics(eval_preds, wtokenizer):
 
 def compute_word_iou(out, wtokenizer, dec_input_ids, word_idxs, labels):
     batch_ious = []
+    # import pdb; pdb.set_trace()
+    # TODO: update for word level
     for i, res in enumerate(out):
-        prediction = {}
-        gt = {}
-        words_dict = defaultdict(list)
+        max_idx = word_idxs[i].max() + 1
 
-        for token_id, word_id, (gts, gte), (s, e) in zip(
-            dec_input_ids[i], word_idxs[i], labels[i], res
-        ):
-            if word_id == -100:
-                break
-            token = wtokenizer.decode(token_id)
-            prediction[str(word_id) + token] = [s.item(), e.item()]
-            gt[str(word_id) + token] = [gts.item(), gte.item()]
-            words_dict[word_id].append(token)
-
-        output_dict = {}
-        gt_dict = {}
         ious = []
-        for word_id, word_tokens in words_dict.items():
-            starts = []
-            ends = []
-
-            pred = [float("inf"), 0]
-            gt_ = [float("inf"), 0]
-            for token in word_tokens:
-                # prediction
-                s, e = prediction[str(word_id) + token]
-                if s < pred[0]:
-                    pred[0] = s
-                if e > pred[1]:
-                    pred[1] = e
-
-                # gt
-                s, e = gt[str(word_id) + token]
-                if s < gt_[0]:
-                    gt_[0] = s
-                if e > gt_[1]:
-                    gt_[1] = e
-
+        for pred, gt_ in zip(out[i][:max_idx], labels[i][:max_idx]):
             if (max(pred[1], gt_[1]) - min(pred[0], gt_[0])) == 0:
                 iou = 0
             else:
@@ -113,10 +81,60 @@ def compute_word_iou(out, wtokenizer, dec_input_ids, word_idxs, labels):
                     max(pred[1], gt_[1]) - min(pred[0], gt_[0])
                 )
                 iou = np.clip(iou, 0, 1)
-            word = "".join(word_tokens)
-            output_dict[word] = pred
-            gt_dict[word] = gt_
+
             ious.append(iou)
         batch_ious.append(np.mean(ious))
+
+    # for i, res in enumerate(out):
+    #     prediction = {}
+    #     gt = {}
+    #     words_dict = defaultdict(list)
+
+    #     for token_id, word_id, (gts, gte), (s, e) in zip(
+    #         dec_input_ids[i], word_idxs[i], labels[i], res
+    #     ):
+    #         if word_id == -100:
+    #             break
+    #         token = wtokenizer.decode(token_id)
+    #         prediction[str(word_id) + token] = [s.item(), e.item()]
+    #         gt[str(word_id) + token] = [gts.item(), gte.item()]
+    #         words_dict[word_id].append(token)
+
+    #     output_dict = {}
+    #     gt_dict = {}
+    #     ious = []
+    #     for word_id, word_tokens in words_dict.items():
+    #         starts = []
+    #         ends = []
+
+    #         pred = [float("inf"), 0]
+    #         gt_ = [float("inf"), 0]
+    #         for token in word_tokens:
+    #             # prediction
+    #             s, e = prediction[str(word_id) + token]
+    #             if s < pred[0]:
+    #                 pred[0] = s
+    #             if e > pred[1]:
+    #                 pred[1] = e
+
+    #             # gt
+    #             s, e = gt[str(word_id) + token]
+    #             if s < gt_[0]:
+    #                 gt_[0] = s
+    #             if e > gt_[1]:
+    #                 gt_[1] = e
+
+    #         if (max(pred[1], gt_[1]) - min(pred[0], gt_[0])) == 0:
+    #             iou = 0
+    #         else:
+    #             iou = (min(pred[1], gt_[1]) - max(pred[0], gt_[0])) / (
+    #                 max(pred[1], gt_[1]) - min(pred[0], gt_[0])
+    #             )
+    #             iou = np.clip(iou, 0, 1)
+    #         word = "".join(word_tokens)
+    #         output_dict[word] = pred
+    #         gt_dict[word] = gt_
+    #         ious.append(iou)
+    #     batch_ious.append(np.mean(ious))
 
     return batch_ious
