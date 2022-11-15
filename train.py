@@ -70,7 +70,7 @@ def main():
     )
     if data_args.use_external:
         external_audios, external_labels = get_audio_label_paths(
-            data_args.external_audio_paths, data_args.external_label_paths
+            data_args.external_audio_folder, data_args.external_label_folder
         )
         train_audios.extend(external_audios)
         train_labels.extend(external_labels)
@@ -86,7 +86,7 @@ def main():
         checkpoint = torch.load(model_args.resume, "cpu")
         if "state_dict" in checkpoint:
             checkpoint = checkpoint.pop("state_dict")
-        model.load_state_dict(checkpoint)
+        model.load_state_dict(checkpoint, strict=False)
     trainer = CustomTrainer(
         model=model,
         args=training_args,
