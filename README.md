@@ -26,3 +26,7 @@ pip install jiwer pyopenjtalk==0.3.0 pytorch-lightning==1.7.7 evaluate==0.2.2 pa
 2. s < 0, e < 0
 3. multiple words in word["d"]
 4. word mapping: ko -> không
+
+### augment
+1. sub audios
+2. audio = audio.flip()
