@@ -172,7 +172,7 @@ class TextDecoder(nn.Module):
         # self.custom_token_embedding.weight.data = pretrained_model.state_dict()["embeddings.word_embeddings.weight"]
         # self.mapping = nn.Linear(768, n_state)  # for phobert model
 
-        self.custom_token_embedding.weight.requires_grad = False
+        self.custom_token_embedding.weight.requires_grad = True
         self.positional_embedding = nn.Parameter(torch.empty(n_ctx, n_state))
 
         self.blocks: Iterable[ResidualAttentionBlock] = nn.ModuleList(
