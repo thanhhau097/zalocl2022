@@ -7,8 +7,22 @@ import whisper
 
 
 class CustomLoss(nn.Module):
-    def forward(self, inputs, targets):
+    def forward(self, inputs, targets, word_idxs=None):
         return nn.functional.l1_loss(inputs[targets != -100], targets[targets != -100])
+        losses = []
+        for i in range(inputs.shape[0]):
+            word_idx = word_idxs[i]
+            input_i = inputs[i][word_idx != -100]
+            target = targets[i][word_idx != -100]
+            word_idx = word_idx[word_idx != -100]
+            unique_idxs = torch.unique(word_idx)
+
+            start = torch.stack([input_i[word_idx == idx][:, 0].min() for idx in unique_idxs])
+            end = torch.stack([input_i[word_idx == idx][:, 1].max() for idx in unique_idxs])
+            pred_word_timestamps = torch.stack([start, end], dim=1)
+            gt_word_timestamps = torch.stack([target[word_idx == idx][-1] for idx in unique_idxs])
+            losses.append(nn.functional.l1_loss(pred_word_timestamps, gt_word_timestamps))
+        return torch.stack(losses).mean()
 
 
 class WhisperModel(nn.Module):

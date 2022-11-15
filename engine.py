@@ -14,7 +14,8 @@ class CustomTrainer(Trainer):
         outputs = model(inputs["input_ids"], inputs["dec_input_ids"])
         loss_fct = CustomLoss()
         labels = inputs.get("labels")
-        loss = loss_fct(outputs, labels)
+        word_idxs = inputs.get("word_idxs")
+        loss = loss_fct(outputs, labels, word_idxs)
         if return_outputs:
             return (loss, outputs)
         return loss
