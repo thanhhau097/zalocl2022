@@ -99,6 +99,9 @@ class LyricDataset(torch.utils.data.Dataset):
         if end_timestamp is not None:
             ms_to_sr = self.sample_rate // 1000
             audio = audio[:, start_timestamp * ms_to_sr : end_timestamp * ms_to_sr]
+        
+        if self.is_training and random.random() > 0.5:
+            audio = audio.flip(0)
 
         audio = whisper.pad_or_trim(audio.flatten())
         mel = whisper.log_mel_spectrogram(audio)

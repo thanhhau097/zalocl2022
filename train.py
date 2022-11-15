@@ -70,7 +70,7 @@ def main():
     )
     if data_args.use_external:
         external_audios, external_labels = get_audio_label_paths(
-            data_args.external_audio_paths, data_args.external_label_paths
+            data_args.external_audio_folder, data_args.external_label_folder
         )
         train_audios.extend(external_audios)
         train_labels.extend(external_labels)
