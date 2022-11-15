@@ -86,7 +86,7 @@ def main():
         checkpoint = torch.load(model_args.resume, "cpu")
         if "state_dict" in checkpoint:
             checkpoint = checkpoint.pop("state_dict")
-        model.load_state_dict(checkpoint)
+        model.load_state_dict(checkpoint, strict=False)
     trainer = CustomTrainer(
         model=model,
         args=training_args,
