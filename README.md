@@ -20,3 +20,9 @@ pip install torch==1.12.1+cu113 torchaudio===0.12.1+cu113 -f https://download.py
 
 pip install jiwer pyopenjtalk==0.3.0 pytorch-lightning==1.7.7 evaluate==0.2.2 pandas termcolor h5py matplotlib ipympl scikit-learn ffmpeg albumentations sentencepiece
 ```
+
+### data problem
+1. s > e
+2. s < 0, e < 0
+3. multiple words in word["d"]
+4. word mapping: ko -> không
