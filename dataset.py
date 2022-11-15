@@ -73,17 +73,31 @@ class LyricDataset(torch.utils.data.Dataset):
         audio_path = self.audio_paths[idx]
         label_path = self.label_paths[idx]
 
+        if label_path.endswith("37393039325f3233.json"):
+            label_path = label_path.replace("labels", "fixed_labels")
         with open(label_path, "r") as f:
             label = json.load(f)
 
         words = []
         starts = []
         ends = []
-        for segment in label:
+        for i, segment in enumerate(label):
             for ann in segment["l"]:
-                words.append(ann["d"].lower())
-                starts.append(int(ann["s"]))
-                ends.append(int(ann["e"]))
+                text = ann["d"].split()
+                s, e = ann["s"], ann["e"]
+                if s > e:
+                    s, e = e, s
+                if len(text) > 1:
+                    timestamps = np.linspace(s, e, len(text) + 1)
+                    for i in range(len(timestamps) - 1):
+                        starts.append(int(timestamps[i]))
+                        ends.append(int(timestamps[i + 1]))
+                else:
+                    starts.append(int(s))
+                    ends.append(int(e))
+                words.extend(text)
+
+        # return words, starts, ends
 
         if self.is_training and len(words) > 8 and random.random() > 0.5:
             start_word_idx = np.random.randint(len(words) - self.min_num_words)
@@ -105,7 +119,7 @@ class LyricDataset(torch.utils.data.Dataset):
         if end_timestamp is not None:
             ms_to_sr = self.sample_rate // 1000
             audio = audio[:, start_timestamp * ms_to_sr : end_timestamp * ms_to_sr]
-        
+
         if self.is_training and random.random() > 0.5:
             audio = audio.flip(0)
 
