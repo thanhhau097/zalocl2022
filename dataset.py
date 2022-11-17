@@ -32,10 +32,10 @@ def get_audio_label_paths(audio_folder: str, label_folder: str) -> Tuple[List[st
 
 def load_wave(wave_path, sample_rate: int = 16000, augment=False) -> torch.Tensor:
     waveform, sr = torchaudio.load(wave_path, normalize=True)
-    # if augment:
-    #     # augment
-    #     random_pitch_shift = lambda: np.random.randint(-400, +400)
-    #     waveform = audio_augment.EffectChain().pitch(random_pitch_shift).rate(sr).apply(waveform, src_info={'rate': sr})
+    if augment:
+        # augment
+        random_pitch_shift = lambda: np.random.randint(-400, +400)
+        waveform = audio_augment.EffectChain().pitch(random_pitch_shift).rate(sr).apply(waveform, src_info={'rate': sr})
 
     if sample_rate != sr:
         waveform = at.Resample(sr, sample_rate)(waveform)
