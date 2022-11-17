@@ -24,7 +24,7 @@ class CustomTrainer(Trainer):
             labels_bce = inputs.get("separated_multiclass")
             outputs_bce = outputs_bce.view(-1, 3000)
             labels_bce = labels_bce.view(-1, 3000)
-            loss += loss_bce(outputs_bce, labels_bce)/40
+            loss += loss_bce(outputs_bce, labels_bce)/40.
         if return_outputs:
             return (loss, outputs)
         return loss

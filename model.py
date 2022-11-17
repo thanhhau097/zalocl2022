@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 
 import whisper
-from balanced_loss import Loss
 
 class CustomLoss(nn.Module):
     def forward(self, inputs, targets):
@@ -31,7 +30,7 @@ class WhisperModel(nn.Module):
         self.linear = nn.Sequential(nn.Linear(self.model.dims.n_text_state, 2), nn.Sigmoid())
         self.bce_aux = bce_aux
         if self.bce_aux:
-            self.linear_bce = nn.Sequential(nn.Linear(self.model.dims.n_text_state, 3000), nn.Sigmoid())
+            self.linear_bce = nn.Linear(self.model.dims.n_text_state, 3000)
 
     def forward(self, input_ids, dec_input_ids, starts=None, ends=None, word_idxs=None, separated_multiclass=None):
         audio_features = self.model.encoder(input_ids)

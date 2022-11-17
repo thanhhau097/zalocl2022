@@ -90,8 +90,12 @@ def main(current_fold):
     #     "data/DALI_V1/song_segments/", "data/DALI_V1/labels/"
     # )
     # print(f"DALI Dataset: Train {len(audio_paths_2)}")
-    # train_audios  = train_audios + audio_paths_2
-    # train_labels = train_labels + label_paths_2
+    # # audio_paths_2, label_paths_2 = get_audio_label_paths(
+    # #     "data/chunks/", "data/chunk_labels_large/"
+    # # )
+    # # print(f"Pseudo Dataset: Train {len(audio_paths_2)}")
+    # # train_audios  = train_audios + audio_paths_2
+    # # train_labels = train_labels + label_paths_2
     # train_audios  = audio_paths_2
     # train_labels = label_paths_2
     train_dataset = LyricDataset(
@@ -100,10 +104,10 @@ def main(current_fold):
     val_dataset = LyricDataset(val_audios, val_labels, wtokenizer, data_args.sample_rate)
 
     # Initialize trainer
-    model = WhisperModel(model_args.model_name, bce_aux=True)
-    # frozen_layers = ['model.encoder.conv1', 'model.encoder.conv2'] + [f'model.encoder.blocks.{i}.' for i in range(15)]
+    model = WhisperModel(model_args.model_name, bce_aux=False)
+    frozen_layers = ['model.encoder.conv1', 'model.encoder.conv2'] + [f'model.encoder.blocks.{i}.' for i in range(15)]
     # frozen_layers = ['model.']
-    # freeze_model(frozen_layers, model)
+    freeze_model(frozen_layers, model)
     if last_checkpoint is None and model_args.resume is not None:
         logger.info(f"Loading {model_args.resume} ...")
         checkpoint = torch.load(model_args.resume, "cpu")

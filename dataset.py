@@ -7,9 +7,10 @@ import numpy as np
 import torch
 import torchaudio
 import torchaudio.transforms as at
+import augment as audio_augment
 
 import whisper
-from augment import SpecAugment
+from my_augment import SpecAugment
 from whisper.tokenizer import Tokenizer
 from sklearn.preprocessing import MultiLabelBinarizer
 
@@ -32,8 +33,9 @@ def get_audio_label_paths(audio_folder: str, label_folder: str) -> Tuple[List[st
 def load_wave(wave_path, sample_rate: int = 16000, augment=False) -> torch.Tensor:
     waveform, sr = torchaudio.load(wave_path, normalize=True)
     # if augment:
-    #     transform = Compose(transforms=transforms)
-    #     transformed_audio =  transform(audio)
+    #     # augment
+    #     random_pitch_shift = lambda: np.random.randint(-400, +400)
+    #     waveform = audio_augment.EffectChain().pitch(random_pitch_shift).rate(sr).apply(waveform, src_info={'rate': sr})
 
     if sample_rate != sr:
         waveform = at.Resample(sr, sample_rate)(waveform)
@@ -65,20 +67,27 @@ class LyricDataset(torch.utils.data.Dataset):
         return len(self.audio_paths)
 
     def __getitem__(self, idx):
-        audio_path = self.audio_paths[idx]
-        label_path = self.label_paths[idx]
-
-        with open(label_path, "r") as f:
-            label = json.load(f)
-
         words = []
         starts = []
         ends = []
-        for segment in label:
-            for ann in segment["l"]:
-                words.append(ann["d"].lower())
-                starts.append(ann["s"])
-                ends.append(ann["e"])
+
+        while len(starts) == 0:
+            audio_path = self.audio_paths[idx]
+            label_path = self.label_paths[idx]
+
+            with open(label_path, "r") as f:
+                label = json.load(f)
+
+            
+            for segment in label:
+                for ann in segment["l"]:
+                    if (float(ann["s"]) > 0) and (float(ann["e"]) > 0):
+                        words.append(ann["d"].lower())
+                        starts.append(ann["s"])
+                        ends.append(ann["e"])
+            if len(starts) == 0:
+                print(label_path)
+                idx += 1
 
         if self.is_training and len(words) > 8 and random.random() > 0.5:
             start_word_idx = np.random.randint(len(words) - self.min_num_words)
@@ -128,6 +137,8 @@ class LyricDataset(torch.utils.data.Dataset):
                 s, e = 0, 1
             if s > e:
                 s, e = e, s
+            if s > 30000 or e > 30000:
+                print(audio_path)
             multiclass_label = self.mlb.transform([np.arange(int(s / max_ms * 3000), int(e / max_ms * 3000) + 1)] * len(tokens))
             if len(separated_multiclass) == 0:
                 separated_multiclass = multiclass_label
