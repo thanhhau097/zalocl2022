@@ -23,6 +23,19 @@ def get_audio_label_paths(audio_folder: str, label_folder: str) -> Tuple[List[st
     for file in audio_files:
         name, ext = os.path.splitext(file)
         if name + ".json" in label_files:
+            # ignore bad data
+            with open(os.path.join(label_folder, name + ".json"), "r") as f:
+                data = json.load(f)
+            
+            if len(data) == 0:
+                continue
+            
+            text = " ".join([item["d"] for item in data[0]["l"]])
+            text = text.lower()
+
+            if "hãy subscribe" in text or "hãy đăng" in text:
+                continue
+
             audio_paths.append(os.path.join(audio_folder, file))
             label_paths.append(os.path.join(label_folder, name + ".json"))
 
@@ -78,7 +91,7 @@ class LyricDataset(torch.utils.data.Dataset):
                 starts.append(ann["s"])
                 ends.append(ann["e"])
 
-        if self.is_training and len(words) > 8 and random.random() > 0.5:
+        if self.is_training and len(words) > self.min_num_words and random.random() > 0.5:
             start_word_idx = np.random.randint(len(words) - self.min_num_words)
             random_length = np.random.randint(self.min_num_words, len(words) - start_word_idx)
             end_word_idx = start_word_idx + random_length
