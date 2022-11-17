@@ -6,12 +6,20 @@ PROJECT_NAME=$(basename "`pwd`")
 echo "Run training for project $PROJECT_NAME"
 
 /bin/cat <<EOM >$TEMP_FILE
+.vscode/*
+.dvc/cache/*
 .git/*
+*.nii.gz
+lib_ds.egg-info
 logs/*
 outputs/*
 weights/*
 notebooks/*
+*.ipynb
+*.whl
+*.bin
 *.cpp
+*.jpg
 *.o
 *.so
 *.flac
@@ -34,37 +42,44 @@ data/index/
 *.zip
 *.parquet
 *.html
-*.ipynb
 *.feather
 *.pth
+*.npy.gz
 *.wav
 *.pkl
 *.npy
 *.jpg
 *.zip
+*.log
+*.tiff
+*.wav
+lib_ds/models/db/trainingv2/task_91.json
 EOM
 
-# if [ "$1" == "t4" ]; then
-#     echo "Push code to h2-data-sekisan-tokyo-experiment-instance-1"
-#     IP="h2-data-sekisan-tokyo-experiment-instance-1.asia-northeast1-a.ai-sekisan-dev"
-#     REMOTE_HOME="/home/anhph"
-# elif [ "$1" == "cvat" ]; then
-#     echo "Push code to h2-data-cvat-tokyo-dev-instance-1"
-#     IP="h2-data-cvat-tokyo-dev-instance-1.asia-northeast1-b.ai-sekisan-dev"
-#     REMOTE_HOME="/home/anhph"
-# elif [ "$1" == "a100" ]; then
-#     echo "h2-data-sekisan-tokyo-a100x8-instance-1"
-#     IP="h2-data-sekisan-tokyo-a100x8-instance-1.asia-northeast1-a.ai-sekisan-dev"
-#     REMOTE_HOME="/home/anhph"
-# else
-#     echo "Unknown instance"
-#     exit
-# fi
-
-
-IP=$1
-echo "Push code to $IP"
-REMOTE_HOME="/home/phamhoan"
+if [ "$1" == "multi" ]; then
+    echo "Push code to multi-202201071427.us-central1-a.neural2-prod-2"
+    IP="multi-202201071427.us-central1-a.neural2-prod-2"
+    REMOTE_HOME="/root"
+elif [ "$1" == "matpat" ]; then
+    echo "Push code to matpatclassify.us-central1-a.neural2-prod-2"
+    IP="matpatclassify.us-central1-a.neural2-prod-2"
+    REMOTE_HOME="/root"
+elif [ "$1" == "sprout" ]; then
+    echo "Push code to sprout server"
+    IP="sprout"
+    REMOTE_HOME="/home/nhan"
+elif [ "$1" == "coach" ]; then
+    echo "Push code to coach"
+    IP="coach"
+    REMOTE_HOME="/storage"
+elif [ "$1" == "lambda" ]; then
+    echo "Push code to lambdalab"
+    IP="ubuntu@132.145.140.89"
+    REMOTE_HOME="/home/ubuntu"
+else
+    echo "Unknown instance"
+    exit
+fi
 
 # push code to server
 rsync -vr -P -e "ssh" --exclude-from $TEMP_FILE "$PWD" $IP:$REMOTE_HOME/
