@@ -79,7 +79,6 @@ for audio_name in tqdm(os.listdir(TEST_AUDIO_FOLDER)):
     out = 0
     for weight, model in zip(weights, models):
         out += model(input_ids, dec_input_ids) * weight
-    out = torch.sigmoid(out)
 
     for i, res in enumerate(out):
         prediction = {}
