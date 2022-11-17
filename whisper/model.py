@@ -173,7 +173,32 @@ class TextDecoder(nn.Module):
         mask = torch.empty(n_ctx, n_ctx).fill_(-np.inf).triu_(1)
         self.register_buffer("mask", mask, persistent=False)
 
-    def forward(self, x: Tensor, xa: Tensor, kv_cache: Optional[dict] = None):
+    def get_word_emb_from_token_embs(self, batch_token_embs, word_idxs):
+        batch_word_embs = []
+
+        for i, (word_idx, token_embs) in enumerate(zip(word_idxs, batch_token_embs)):
+            max_word_idx = word_idx.max().item()
+
+            word_embs = []
+            for index in range(max_word_idx + 1):
+                token_ids = (word_idx == index).nonzero(as_tuple=True)[0]
+                word_token_embs = token_embs.index_select(0, token_ids)
+                word_embs.append(word_token_embs.mean(dim=0))
+
+            batch_word_embs.append(word_embs)
+
+        # pad batch word embeddings to make it to be a tensor
+        max_idx = word_idxs.max().item() + 1
+        batch_word_embs = [
+            F.pad(torch.stack(word_embs), (0,0,0,max_idx-len(word_embs))) for word_embs in batch_word_embs
+        ]
+
+        for word_embs, token_embs in zip(batch_word_embs, batch_token_embs):
+            word_embs[:-(max_idx-len(word_embs))] = token_embs[-1]
+
+        return torch.stack(batch_word_embs)
+
+    def forward(self, x: Tensor, xa: Tensor, word_idxs, kv_cache: Optional[dict] = None):
         """
         x : torch.LongTensor, shape = (batch_size, <= n_ctx)
             the text tokens
@@ -181,10 +206,20 @@ class TextDecoder(nn.Module):
             the encoded audio features to be attended on
         """
         offset = next(iter(kv_cache.values())).shape[1] if kv_cache else 0
-        x = self.token_embedding(x) + self.positional_embedding[offset : offset + x.shape[-1]]
+        x = self.token_embedding(x)
+
+        x = x + self.positional_embedding[offset : offset + x.shape[1]]
         x = x.to(xa.dtype)
 
-        for block in self.blocks:
+        batch_word_embs = self.get_word_emb_from_token_embs(x, word_idxs)
+        num_fusion_block = 0
+
+        for i, block in enumerate(self.blocks[:num_fusion_block]):
+            x = block(x, xa, mask=self.mask, kv_cache=kv_cache)
+            batch_word_embs += self.get_word_emb_from_token_embs(x, word_idxs)
+
+        x = batch_word_embs / (num_fusion_block + 1)
+        for i, block in enumerate(self.blocks[num_fusion_block:]):
             x = block(x, xa, mask=self.mask, kv_cache=kv_cache)
 
         x = self.ln(x)

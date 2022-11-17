@@ -89,7 +89,7 @@ class LyricDataset(torch.utils.data.Dataset):
                 print(label_path)
                 idx += 1
 
-        if self.is_training and len(words) > 8 and random.random() > 0.5:
+        if self.is_training and len(words) > self.min_num_words and random.random() > 0.5:
             start_word_idx = np.random.randint(len(words) - self.min_num_words)
             random_length = np.random.randint(self.min_num_words, len(words) - start_word_idx)
             end_word_idx = start_word_idx + random_length
@@ -120,7 +120,7 @@ class LyricDataset(torch.utils.data.Dataset):
         separated_tokens = []
         separated_starts = []
         separated_ends = []
-        separated_multiclass = []
+        # separated_multiclass = []
         word_idxs = []
 
         for (word_idx, word), s, e in zip(enumerate(words), starts, ends):
@@ -131,19 +131,19 @@ class LyricDataset(torch.utils.data.Dataset):
             # for i in range(len(timestamps) - 1):
             #     separated_starts.append(timestamps[i] / max_ms)
             #     separated_ends.append(timestamps[i + 1] / max_ms)
-            separated_starts += [s / max_ms] * len(tokens)
-            separated_ends += [e / max_ms] * len(tokens)
+            separated_starts += [s / max_ms]
+            separated_ends += [e / max_ms]
             if s < 0 or e < 0:
                 s, e = 0, 1
             if s > e:
                 s, e = e, s
             if s > 30000 or e > 30000:
                 print(audio_path)
-            multiclass_label = self.mlb.transform([np.arange(int(s / max_ms * 3000), int(e / max_ms * 3000) + 1)] * len(tokens))
-            if len(separated_multiclass) == 0:
-                separated_multiclass = multiclass_label
-            else:
-                separated_multiclass = np.concatenate([separated_multiclass, multiclass_label], axis=0)
+            # multiclass_label = self.mlb.transform([np.arange(int(s / max_ms * 3000), int(e / max_ms * 3000) + 1)] * len(tokens))
+            # if len(separated_multiclass) == 0:
+            #     separated_multiclass = multiclass_label
+            # else:
+            #     separated_multiclass = np.concatenate([separated_multiclass, multiclass_label], axis=0)
         separated_tokens = separated_tokens
         starts = separated_starts
         ends = separated_ends
@@ -153,7 +153,7 @@ class LyricDataset(torch.utils.data.Dataset):
             "starts": starts,
             "ends": ends,
             "word_idxs": word_idxs,
-            "separated_multiclass": separated_multiclass,
+            # "separated_multiclass": separated_multiclass,
         }
 
 
@@ -166,30 +166,31 @@ class DataCollatorWithPadding:
             labels.append(np.array([f["starts"], f["ends"]]).transpose())
             dec_input_ids.append(f["dec_input_ids"])
             word_idxs.append(f["word_idxs"])
-            separated_multiclass.append(f["separated_multiclass"])
+            # separated_multiclass.append(f["separated_multiclass"])
 
         input_ids = torch.concat([input_id[None, :] for input_id in input_ids])
 
         label_lengths = [len(lab) for lab in labels]
         dec_input_ids_length = [len(e) for e in dec_input_ids]
         word_idxs_length = [len(w) for w in word_idxs]
-        max_label_len = max(label_lengths + dec_input_ids_length)
-        max_multiclass_len = max([len(m) for m in separated_multiclass])
+        max_label_len = max(label_lengths)
+        max_input_len = max(dec_input_ids_length)
+        # max_multiclass_len = max([len(m) for m in separated_multiclass])
         labels = [
             np.concatenate([lab, np.ones((max(max_label_len - lab_len, 0), 2)) * -100])
             for lab, lab_len in zip(labels, label_lengths)
         ]
 
-        separated_multiclass_padded = np.zeros((len(features), max_multiclass_len, 3000))
-        for i, f in enumerate(separated_multiclass):
-            separated_multiclass_padded[i, :len(f)] = f
+        # separated_multiclass_padded = np.zeros((len(features), max_multiclass_len, 3000))
+        # for i, f in enumerate(separated_multiclass):
+        #     separated_multiclass_padded[i, :len(f)] = f
 
         dec_input_ids = [
-            np.pad(e, (0, max_label_len - e_len), "constant", constant_values=50257)
+            np.pad(e, (0, max_input_len - e_len), "constant", constant_values=50257)
             for e, e_len in zip(dec_input_ids, dec_input_ids_length)
         ]  # 50257 is eot token id
         word_idxs = [
-            np.pad(w, (0, max_label_len - w_len), "constant", constant_values=-100)
+            np.pad(w, (0, max_input_len - w_len), "constant", constant_values=-100)
             for w, w_len in zip(word_idxs, word_idxs_length)
         ]
 
@@ -198,7 +199,7 @@ class DataCollatorWithPadding:
             "dec_input_ids": dec_input_ids,
             "input_ids": input_ids,
             "word_idxs": word_idxs,
-            "separated_multiclass": separated_multiclass_padded,
+            # "separated_multiclass": separated_multiclass_padded,
         }
         batch = {k: torch.from_numpy(np.array(v)) for k, v in batch.items()}
         batch["dec_input_ids"] = batch["dec_input_ids"].long()
