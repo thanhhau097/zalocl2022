@@ -7,7 +7,7 @@ import torch
 from tqdm import tqdm
 
 import whisper
-from dataset import clean_word, load_wave
+from dataset import load_wave
 from model import WhisperModel
 
 SAMPLE_RATE = 16000
@@ -19,11 +19,16 @@ SUBMISSION_FOLDER = "./submissions/"
 torch.set_grad_enabled(False)
 woptions = whisper.DecodingOptions(language="vi", without_timestamps=True)
 wtokenizer = whisper.get_tokenizer(True, language="vi", task=woptions.task)
-model = WhisperModel("large")
-checkpoint = torch.load("wlarge_finetune/checkpoint-7182/pytorch_model.bin", "cpu")
-model.load_state_dict(checkpoint)
-model = model.cuda()
-model.eval()
+
+models = []
+for name, ckpt_path in zip(["medium", "large"], ["wmedium.bin", "wlarge.bin"]):
+    model = WhisperModel(name)
+    checkpoint = torch.load(ckpt_path, "cpu")
+    model.load_state_dict(checkpoint)
+    model = model.cuda()
+    model.eval()
+    models.append(model)
+weights = [0.4, 0.6]
 
 
 for audio_name in tqdm(os.listdir(TEST_AUDIO_FOLDER)):
@@ -61,7 +66,21 @@ for audio_name in tqdm(os.listdir(TEST_AUDIO_FOLDER)):
     dec_input_ids = torch.from_numpy(np.array(separated_tokens)).unsqueeze(0).cuda()
     word_idxs = [word_idxs]
 
-    out = model(input_ids, dec_input_ids)
+    # out = model(input_ids, dec_input_ids)
+
+    # out1 = models[0](input_ids, dec_input_ids)
+    # out2 = models[1](input_ids, dec_input_ids)
+    # starts = torch.stack([out1[..., 0], out2[..., 0]], -1)
+    # starts = torch.max(starts, dim=-1)[0]
+    # ends = torch.stack([out1[..., 1], out2[..., 1]], -1)
+    # ends = torch.min(ends, dim=-1)[0]
+    # out = torch.stack([starts, ends], -1)
+
+    out = 0
+    for weight, model in zip(weights, models):
+        out += model(input_ids, dec_input_ids) * weight
+    out = torch.sigmoid(out)
+
     for i, res in enumerate(out):
         prediction = {}
         words_dict = defaultdict(list)
