@@ -74,7 +74,7 @@ elif [ "$1" == "coach" ]; then
     REMOTE_HOME="/storage"
 elif [ "$1" == "lambda" ]; then
     echo "Push code to lambdalab"
-    IP="ubuntu@132.145.140.89"
+    IP="ubuntu@150.136.116.51"
     REMOTE_HOME="/home/ubuntu"
 else
     echo "Unknown instance"
