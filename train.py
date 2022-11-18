@@ -31,11 +31,10 @@ def freeze_model(frozen_layers, model):
                 parameter.requires_grad_(False)
 
 
-def main(current_fold):
+def main():
     parser = HfArgumentParser((DataArguments, ModelArguments, TrainingArguments))
     data_args, model_args, training_args = parser.parse_args_into_dataclasses()
 
-    # training_args.output_dir = training_args.output_dir + f'_fold{current_fold}'
     # Detecting last checkpoint.
     last_checkpoint = None
     if (
@@ -164,6 +163,4 @@ def main(current_fold):
 
 
 if __name__ == "__main__":
-    # for i in range(20):
-    #     main(i)
-    main(0)
+    main()

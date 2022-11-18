@@ -85,12 +85,29 @@ for audio_name in tqdm(os.listdir(TEST_AUDIO_FOLDER)):
         words_dict = defaultdict(list)
         word_ids_dict = defaultdict(list)
 
+        last_word_id = 0
+        token_position = 0
         for token_id, word_id, (s, e) in zip(dec_input_ids[i], word_idxs[i], res):
             token = wtokenizer.decode(token_id)
-            prediction[str(word_id) + token] = [s.item(), e.item()]
+
+            # we need to add token position in word to make the key
+            if last_word_id != word_id:
+                last_word_id = word_id
+                token_position = 0
+
+            key = str(word_id) + "_" + token + "_" + str(token_position)
+            if key in prediction:
+                print("duplicate key", key.encode("utf8"))
+                print("old value:", prediction[key])
+                print("new value:", [s.item(), e.item()])
+                print("---------------------------------")
+
+            prediction[key] = [s.item(), e.item()]
             # print(token, s.item() * max_ms, e.item() * max_ms)
             words_dict[word_id].append(token)
             word_ids_dict[word_id].append(token_id)
+
+            token_position += 1
 
         # print(prediction)
         words = list(words_dict.values())
@@ -104,9 +121,9 @@ for audio_name in tqdm(os.listdir(TEST_AUDIO_FOLDER)):
             ends = []
 
             pred = [float("inf"), 0]
-            for token in word_tokens:
+            for token_posision, token in enumerate(word_tokens):
                 # prediction
-                s, e = prediction[str(wid) + token]
+                s, e = prediction[str(wid) + "_" + token + "_" + str(token_posision)]
                 # print(s, e)
                 if s < pred[0]:
                     pred[0] = s
