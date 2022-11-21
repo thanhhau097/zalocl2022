@@ -68,7 +68,7 @@ def main(rank, world_size, config, resume, preload):
     config["train_dataset"]["args"]["special_tokens"] = config["special_tokens"]
     config["val_dataset"]["args"]["special_tokens"] = config["special_tokens"]
 
-    # train_base_ds = initialize_module(config["train_dataset"]["path"], args=config["train_dataset"]["args"])
+    train_base_ds = initialize_module(config["train_dataset"]["path"], args=config["train_dataset"]["args"])
     # vocab_dict = train_base_ds.get_vocab_dict()
     # with open('vocab.json', 'w+') as f:
     #     json.dump(vocab_dict, f)
