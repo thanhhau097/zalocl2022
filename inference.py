@@ -13,17 +13,28 @@ from model import WhisperModel
 SAMPLE_RATE = 16000
 TEST_AUDIO_FOLDER = "./data/public_test/songs/"
 TEST_LYRICS_FOLDER = "./data/public_test/lyrics/"
-TEST_TEMPLATES_FOLDER = "./data/public_test/json_lyrics/"
+TEST_TEMPLATES_FOLDER = "./data/public_test/new_labels_json/"
 SUBMISSION_FOLDER = "./data/submissions/"
 
 torch.set_grad_enabled(False)
 woptions = whisper.DecodingOptions(language="vi", without_timestamps=True)
 wtokenizer = whisper.get_tokenizer(True, language="vi", task=woptions.task)
-model = WhisperModel("large")
-checkpoint = torch.load("wlarge_finetune/checkpoint-12096/pytorch_model.bin", "cpu")
-model.load_state_dict(checkpoint)
-model = model.cuda()
-model.eval()
+
+# weights = ["wlarge_kfold_fold0/checkpoint-11466/", "wlarge_kfold_fold1/checkpoint-8946/", "wlarge_kfold_fold2/checkpoint-10710/"]
+# models = []
+# alphas = [0.37, 0.33, 0.3]
+
+weights = ["wlarge_kfold_fold5/checkpoint-10710/"]
+models = []
+alphas = [1.0]
+
+for weight in weights:
+    model = WhisperModel("large")
+    checkpoint = torch.load(f"{weight}pytorch_model.bin", "cpu")
+    model.load_state_dict(checkpoint)
+    model = model.cuda()
+    model.eval()
+    models.append(model)
 
 
 for audio_name in tqdm(os.listdir(TEST_AUDIO_FOLDER)):
@@ -33,9 +44,9 @@ for audio_name in tqdm(os.listdir(TEST_AUDIO_FOLDER)):
     template_path = os.path.join(TEST_TEMPLATES_FOLDER, name + ".json")
 
     out = 0
-    for i in range(5):
+    for i in range(len(models)):
         # audio
-        audio = load_wave(audio_path, sample_rate=SAMPLE_RATE, augment=True)
+        audio = load_wave(audio_path, sample_rate=SAMPLE_RATE, augment=False)
         audio = whisper.pad_or_trim(audio.flatten())
         mel = whisper.log_mel_spectrogram(audio)
 
@@ -63,7 +74,7 @@ for audio_name in tqdm(os.listdir(TEST_AUDIO_FOLDER)):
         dec_input_ids = torch.from_numpy(np.array(separated_tokens)).unsqueeze(0).cuda()
         word_idxs = [word_idxs]
 
-        out += model(input_ids, dec_input_ids) * 0.2
+        out += models[i](input_ids, dec_input_ids) * alphas[i]
 
     for i, res in enumerate(out):
         prediction = {}

@@ -32,10 +32,10 @@ def get_audio_label_paths(audio_folder: str, label_folder: str) -> Tuple[List[st
 
 def load_wave(wave_path, sample_rate: int = 16000, augment=False) -> torch.Tensor:
     waveform, sr = torchaudio.load(wave_path, normalize=True)
-    if augment:
-        # augment
-        random_pitch_shift = lambda: np.random.randint(-400, +400)
-        waveform = audio_augment.EffectChain().pitch(random_pitch_shift).rate(sr).apply(waveform, src_info={'rate': sr})
+    # if augment:
+    #     # augment
+    #     random_pitch_shift = lambda: np.random.randint(-400, +400)
+    #     waveform = audio_augment.EffectChain().pitch(random_pitch_shift).rate(sr).apply(waveform, src_info={'rate': sr})
 
     if sample_rate != sr:
         waveform = at.Resample(sr, sample_rate)(waveform)
@@ -70,24 +70,37 @@ class LyricDataset(torch.utils.data.Dataset):
         words = []
         starts = []
         ends = []
+        
+        audio_path = self.audio_paths[idx]
+        label_path = self.label_paths[idx]
 
-        while len(starts) == 0:
-            audio_path = self.audio_paths[idx]
-            label_path = self.label_paths[idx]
+        with open(label_path, "r") as f:
+            label = json.load(f)
 
-            with open(label_path, "r") as f:
-                label = json.load(f)
+        
+        for segment in label:
+            for ann in segment["l"]:
+                words.append(ann["d"].lower())
+                starts.append(max(float(ann["s"]), 0))
+                ends.append(max(float(ann["e"]), 0))
+        
+        # while len(starts) == 0:
+        #     audio_path = self.audio_paths[idx]
+        #     label_path = self.label_paths[idx]
+
+        #     with open(label_path, "r") as f:
+        #         label = json.load(f)
 
             
-            for segment in label:
-                for ann in segment["l"]:
-                    if (float(ann["s"]) > 0) and (float(ann["e"]) > 0):
-                        words.append(ann["d"].lower())
-                        starts.append(ann["s"])
-                        ends.append(ann["e"])
-            if len(starts) == 0:
-                print(label_path)
-                idx += 1
+        #     for segment in label:
+        #         for ann in segment["l"]:
+        #             if (float(ann["s"]) > 0) and (float(ann["e"]) > 0):
+        #                 words.append(ann["d"].lower())
+        #                 starts.append(ann["s"])
+        #                 ends.append(ann["e"])
+        #     if len(starts) == 0:
+        #         print(label_path)
+        #         idx += 1
 
         if self.is_training and len(words) > 8 and random.random() > 0.5:
             start_word_idx = np.random.randint(len(words) - self.min_num_words)

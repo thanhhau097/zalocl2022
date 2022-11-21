@@ -33,7 +33,7 @@ def main(current_fold):
     parser = HfArgumentParser((DataArguments, ModelArguments, TrainingArguments))
     data_args, model_args, training_args = parser.parse_args_into_dataclasses()
 
-    # training_args.output_dir = training_args.output_dir + f'_fold{current_fold}'
+    training_args.output_dir = training_args.output_dir + f'_fold{current_fold}'
     # Detecting last checkpoint.
     last_checkpoint = None
     if (
@@ -71,31 +71,30 @@ def main(current_fold):
 
     woptions = whisper.DecodingOptions(language="vi", without_timestamps=True)
     wtokenizer = whisper.get_tokenizer(True, language="vi", task=woptions.task)
-    audio_paths, label_paths = get_audio_label_paths(
-        data_args.audio_folder, data_args.label_folder
-    )
-    train_audios, val_audios, train_labels, val_labels = train_test_split(
-        audio_paths, label_paths, test_size=0.05, random_state=42
-    )
-    # df = pd.DataFrame({'audio': audio_paths, 'label': label_paths})
-    # skf = KFold(n_splits=20, random_state=42, shuffle=True)
-    # for fold, ( _, val_) in enumerate(skf.split(X=df)):
-    #     df.loc[val_ , "kfold"] = fold
-    # train_df, val_df = df[df['kfold'] != current_fold], df[df['kfold'] == current_fold]
-    # train_audios, train_labels = train_df['audio'].tolist(), train_df['label'].tolist()
-    # val_audios, val_labels = val_df['audio'].tolist(), val_df['label'].tolist()
+    
+    df = pd.read_csv("data/train.csv")
+    train_audios = df[df.fold != current_fold].audio.tolist()
+    train_labels = df[df.fold != current_fold].lyrics.tolist()
+    val_audios = df[df.fold == current_fold].audio.tolist()
+    val_labels = df[df.fold == current_fold].lyrics.tolist()
+    # audio_paths, label_paths = get_audio_label_paths(
+    #     data_args.audio_folder, data_args.label_folder
+    # )
+    # train_audios, val_audios, train_labels, val_labels = train_test_split(
+    #     audio_paths, label_paths, test_size=0.05, random_state=42
+    # )
 
     print(f"ZALO Dataset FOLD{current_fold}: Train {len(train_audios)}, Val {len(val_audios)}")
     # audio_paths_2, label_paths_2 = get_audio_label_paths(
     #     "data/DALI_V1/song_segments/", "data/DALI_V1/labels/"
     # )
     # print(f"DALI Dataset: Train {len(audio_paths_2)}")
-    # # audio_paths_2, label_paths_2 = get_audio_label_paths(
-    # #     "data/chunks/", "data/chunk_labels_large/"
-    # # )
-    # # print(f"Pseudo Dataset: Train {len(audio_paths_2)}")
-    # # train_audios  = train_audios + audio_paths_2
-    # # train_labels = train_labels + label_paths_2
+    # audio_paths_2, label_paths_2 = get_audio_label_paths(
+    #     "data/chunks/", "data/chunk_labels_large/"
+    # )
+    # print(f"Pseudo Dataset: Train {len(audio_paths_2)}")
+    # train_audios  = train_audios + audio_paths_2
+    # train_labels = train_labels + label_paths_2
     # train_audios  = audio_paths_2
     # train_labels = label_paths_2
     train_dataset = LyricDataset(
@@ -159,6 +158,6 @@ def main(current_fold):
 
 
 if __name__ == "__main__":
-    # for i in range(20):
-    #     main(i)
-    main(0)
+    for i in range(10):
+        main(i)
+    # main(0)
