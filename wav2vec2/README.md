@@ -75,8 +75,8 @@ python run_speech_recognition_ctc.py \
 	--learning_rate="3e-4" \
 	--warmup_steps="500" \
 	--evaluation_strategy="steps" \
-    --audio_column_name="path" \
-	--text_column_name="transcript" \
+    --audio_column_name="audio" \
+	--text_column_name="text" \
 	--save_steps="400" \
 	--eval_steps="100" \
 	--layerdrop="0.0" \
@@ -112,8 +112,8 @@ python -m torch.distributed.launch \
 	--learning_rate="3e-4" \
 	--warmup_steps="500" \
 	--evaluation_strategy="steps" \
-    --audio_column_name="path" \
-	--text_column_name="transcript" \
+    --audio_column_name="audio" \
+	--text_column_name="text" \
 	--save_steps="400" \
 	--eval_steps="100" \
 	--logging_steps="1" \
