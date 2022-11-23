@@ -61,11 +61,11 @@ If the environment variable is not set, the training script might freeze, *i.e.*
 The following command shows how to fine-tune [XLSR-Wav2Vec2](https://huggingface.co/transformers/main/model_doc/xlsr_wav2vec2.html) on [Common Voice](https://huggingface.co/datasets/common_voice) using a single GPU in half-precision.
 
 ```bash
-python run_speech_recognition_ctc.py \
+python train_ctc.py \
 	--dataset_name="common_voice" \
 	--model_name_or_path="facebook/wav2vec2-large-xlsr-53" \
-    --custom_train_dataset_file="./data/wav2vec_train_1.csv" \
-    --custom_val_dataset_file="./data/wav2vec_val_1.csv" \
+    --custom_train_dataset_file="/shared/disk1/thanh/spotify//wav2vec_train_1.csv" \
+    --custom_val_dataset_file="/shared/disk1/thanh/spotify/wav2vec_val_1.csv" \
 	--dataset_config_name="tr" \
 	--output_dir="./wav2vec2-common_voice-tr-demo" \
 	--overwrite_output_dir \
@@ -86,9 +86,11 @@ python run_speech_recognition_ctc.py \
 	--chars_to_ignore , ? . ! - \; \: \" “ % ‘ ” � \
 	--fp16 \
 	--group_by_length \
-	--push_to_hub \
-	--do_train --do_eval 
-```
+	--do_train --do_eval \
+	--preprocessing_num_workers 32 \
+	--dataloader_num_workers 32 \
+	--report_to neptune \
+	--length_column_name input_length```
 
 On a single V100 GPU, this script should run in *ca.* 1 hour 20 minutes and yield a CTC loss of **0.39** and word error rate
 of **0.35**.
@@ -99,24 +101,25 @@ The following command shows how to fine-tune [XLSR-Wav2Vec2](https://huggingface
 
 ```bash
 python -m torch.distributed.launch \
-	--nproc_per_node 8 run_speech_recognition_ctc.py \
+	--nproc_per_node 2 train_ctc.py \
 	--dataset_name="common_voice" \
-    --custom_train_dataset_file="./data/wav2vec_train_1.csv" \
-    --custom_val_dataset_file="./data/wav2vec_val_1.csv" \
-	--model_name_or_path="facebook/wav2vec2-large-xlsr-53" \
+    --custom_train_dataset_file="/shared/disk1/thanh/spotify/wav2vec_train_1.csv" \
+    --custom_val_dataset_file="/shared/disk1/thanh/spotify/wav2vec_val_1.csv" \
+	--model_name_or_path="nguyenvulebinh/wav2vec2-large-vi" \
+	--tokenizer_name_or_path="nguyenvulebinh/wav2vec2-large-vi" \
 	--dataset_config_name="tr" \
 	--output_dir="./wav2vec2-common_voice-tr-demo-dist" \
 	--overwrite_output_dir \
-	--num_train_epochs="15" \
-	--per_device_train_batch_size="4" \
+	--num_train_epochs="150" \
+	--per_device_train_batch_size="16" \
 	--learning_rate="3e-4" \
 	--warmup_steps="500" \
 	--evaluation_strategy="steps" \
-    --audio_column_name="audio" \
+	--audio_column_name="audio" \
 	--text_column_name="text" \
-	--save_steps="400" \
-	--eval_steps="100" \
-	--logging_steps="1" \
+	--save_steps="10000" \
+	--eval_steps="10000" \
+	--logging_steps="10" \
 	--layerdrop="0.0" \
 	--save_total_limit="3" \
 	--freeze_feature_encoder \
@@ -124,8 +127,16 @@ python -m torch.distributed.launch \
 	--chars_to_ignore , ? . ! - \; \: \" “ % ‘ ” � \
 	--fp16 \
 	--group_by_length \
-	--push_to_hub \
-	--do_train --do_eval
+	--do_train --do_eval \
+	--preprocessing_num_workers 32 \
+	--dataloader_num_workers 32 \
+	--report_to neptune \
+	--length_column_name input_length
+```
+
+```
+export NEPTUNE_PROJECT="thanhhau097/speech"
+export NEPTUNE_API_TOKEN="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiJlMTRjM2ExOC1lYTA5LTQwODctODMxNi1jZjEzMjdlMjkxYTgifQ=="
 ```
 
 On 8 V100 GPUs, this script should run in *ca.* 18 minutes and yield a CTC loss of **0.39** and word error rate
