@@ -60,8 +60,6 @@ class LyricDataset(torch.utils.data.Dataset):
         self.audio_paths, self.label_paths = audio_paths, label_paths
         self.spec_aug = SpecAugment(p=0.5)
         self.min_num_words = min_num_words
-        self.mlb = MultiLabelBinarizer()
-        self.mlb.fit([np.arange(3000)])
 
     def __len__(self):
         return len(self.audio_paths)
@@ -127,23 +125,8 @@ class LyricDataset(torch.utils.data.Dataset):
             tokens = self.tokenizer.encode(word)
             word_idxs += [word_idx] * len(tokens)
             separated_tokens += tokens
-            # timestamps = np.linspace(s, e, len(tokens) + 1)
-            # for i in range(len(timestamps) - 1):
-            #     separated_starts.append(timestamps[i] / max_ms)
-            #     separated_ends.append(timestamps[i + 1] / max_ms)
             separated_starts += [s / max_ms]
             separated_ends += [e / max_ms]
-            if s < 0 or e < 0:
-                s, e = 0, 1
-            if s > e:
-                s, e = e, s
-            if s > 30000 or e > 30000:
-                print(audio_path)
-            # multiclass_label = self.mlb.transform([np.arange(int(s / max_ms * 3000), int(e / max_ms * 3000) + 1)] * len(tokens))
-            # if len(separated_multiclass) == 0:
-            #     separated_multiclass = multiclass_label
-            # else:
-            #     separated_multiclass = np.concatenate([separated_multiclass, multiclass_label], axis=0)
         separated_tokens = separated_tokens
         starts = separated_starts
         ends = separated_ends

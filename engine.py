@@ -6,25 +6,16 @@ import torch
 from transformers import Trainer
 from transformers.trainer_pt_utils import nested_detach
 
-from model import CustomLoss, WhisperModel, BalancedBCE
+from model import CustomLoss, WhisperModel
 
 
 class CustomTrainer(Trainer):
     def compute_loss(self, model: WhisperModel, inputs: Dict, return_outputs=False):
-        if model.module.bce_aux:
-            outputs, outputs_bce = model(inputs["input_ids"], inputs["dec_input_ids"])
-        else:
-            outputs = model(inputs["input_ids"], inputs["dec_input_ids"], inputs["word_idxs"])
+        outputs = model(inputs["input_ids"], inputs["dec_input_ids"], inputs["word_idxs"])
         loss_fct = CustomLoss()
         
         labels = inputs.get("labels")
         loss = loss_fct(outputs, labels)
-        if model.module.bce_aux:
-            loss_bce = BalancedBCE()
-            labels_bce = inputs.get("separated_multiclass")
-            outputs_bce = outputs_bce.view(-1, 3000)
-            labels_bce = labels_bce.view(-1, 3000)
-            loss += loss_bce(outputs_bce, labels_bce)/40.
         if return_outputs:
             return (loss, outputs)
         return loss
