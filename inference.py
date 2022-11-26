@@ -14,7 +14,11 @@ SAMPLE_RATE = 16000
 TEST_AUDIO_FOLDER = "./data/public_test/songs/"
 TEST_LYRICS_FOLDER = "./data/public_test/lyrics/"
 TEST_TEMPLATES_FOLDER = "./data/public_test/new_labels_json/"
-SUBMISSION_FOLDER = "./data/submissions/"
+SUBMISSION_FOLDER = "./data/submissions_f5/"
+# TEST_AUDIO_FOLDER = "./data/segments/"
+# TEST_LYRICS_FOLDER = "./data/public_test/lyrics/"
+# TEST_TEMPLATES_FOLDER = "./data/spotify_segment_pseudo/"
+# SUBMISSION_FOLDER = "./data/spotify_segment_pseudo_result_3/"
 
 torch.set_grad_enabled(False)
 woptions = whisper.DecodingOptions(language="vi", without_timestamps=True)
@@ -24,7 +28,13 @@ wtokenizer = whisper.get_tokenizer(True, language="vi", task=woptions.task)
 # models = []
 # alphas = [0.37, 0.33, 0.3]
 
-weights = ["wlarge_kfold_fold5/checkpoint-10710/"]
+# weights = ["wlarge_kfold_pseudo_spotify_fold7/checkpoint-16520/"]
+# weights = ["wlarge_kfold_pseudo_spotify_fold9/checkpoint-15694/"]
+weights = ["wlarge_kfold_pseudo_spotify_fold5/checkpoint-15694/"]
+# weights = ["wlarge_kfold_pseudo_spotify_2_new_fold7/checkpoint-14000/"]
+# weights = ["wlarge_kfold_pseudo_spotify_2_fold7/checkpoint-7500/"]
+# weights = ["wlarge_kfold_pseudo_spotify_3_fold7/checkpoint-2898/"]
+
 models = []
 alphas = [1.0]
 
