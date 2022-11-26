@@ -26,8 +26,11 @@ wtokenizer = whisper.get_tokenizer(True, language="vi", task=woptions.task)
 
 dirs = "wlarge_kfold_pseudo_spotify_2_full_fold5/"
 checkpoints = os.listdir(dirs)
+checkpoints = [checkpoint_path for checkpoint_path in checkpoints if os.path.isdir(f"{dirs}/{checkpoint_path}/")]
 
 for checkpoint_path in checkpoints:
+    if os.path.isdir(SUBMISSION_FOLDER.format(checkpoint_path)):
+        continue
     os.mkdir(SUBMISSION_FOLDER.format(checkpoint_path))
     weights = [f"{dirs}/{checkpoint_path}/"]
 
