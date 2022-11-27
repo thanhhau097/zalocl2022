@@ -69,23 +69,35 @@ class LyricDataset(torch.utils.data.Dataset):
         starts = []
         ends = []
 
-        while len(starts) == 0:
-            audio_path = self.audio_paths[idx]
-            label_path = self.label_paths[idx]
+        # while len(starts) == 0:
+        #     audio_path = self.audio_paths[idx]
+        #     label_path = self.label_paths[idx]
 
-            with open(label_path, "r") as f:
-                label = json.load(f)
+        #     with open(label_path, "r") as f:
+        #         label = json.load(f)
 
             
-            for segment in label:
-                for ann in segment["l"]:
-                    if (float(ann["s"]) > 0) and (float(ann["e"]) > 0):
-                        words.append(ann["d"].lower())
-                        starts.append(ann["s"])
-                        ends.append(ann["e"])
-            if len(starts) == 0:
-                print(label_path)
-                idx += 1
+        #     for segment in label:
+        #         for ann in segment["l"]:
+        #             if (float(ann["s"]) > 0) and (float(ann["e"]) > 0):
+        #                 words.append(ann["d"].lower())
+        #                 starts.append(ann["s"])
+        #                 ends.append(ann["e"])
+        #     if len(starts) == 0:
+        #         print(label_path)
+        #         idx += 1
+
+        audio_path = self.audio_paths[idx]
+        label_path = self.label_paths[idx]
+
+        with open(label_path, "r") as f:
+            label = json.load(f)
+
+        for segment in label:
+            for ann in segment["l"]:
+                words.append(ann["d"].lower())
+                starts.append(max(float(ann["s"]), 0))
+                ends.append(max(float(ann["e"]), 0))
 
         if self.is_training and len(words) > self.min_num_words and random.random() > 0.5:
             start_word_idx = np.random.randint(len(words) - self.min_num_words)
