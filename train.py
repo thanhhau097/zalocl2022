@@ -32,8 +32,20 @@ def freeze_model(frozen_layers, model):
 def main(current_fold):
     parser = HfArgumentParser((DataArguments, ModelArguments, TrainingArguments))
     data_args, model_args, training_args = parser.parse_args_into_dataclasses()
+    model_args.resume = model_args.resume + f'_fold{current_fold}/'
+    if current_fold == 7:
+        model_args.resume += 'checkpoint-16520/'
+    elif current_fold == 9:
+        model_args.resume += 'checkpoint-15694/'
+    elif current_fold == 5:
+        model_args.resume += 'checkpoint-15694/'
+    elif current_fold == 2:
+        model_args.resume += 'checkpoint-15694/'
+    elif current_fold == 15:
+        model_args.resume += 'checkpoint-11564/'
+    model_args.resume += 'pytorch_model.bin'
 
-    # training_args.output_dir = training_args.output_dir + f'_fold{current_fold}'
+    training_args.output_dir = training_args.output_dir + f'_fold{current_fold}'
     # Detecting last checkpoint.
     last_checkpoint = None
     if (
@@ -164,6 +176,6 @@ def main(current_fold):
 
 
 if __name__ == "__main__":
-    # for i in range(20):
-    #     main(i)
-    main(5)
+    for i in [9, 7, 2, 15]:
+        main(i)
+    # main(5)
