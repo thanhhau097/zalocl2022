@@ -31,6 +31,9 @@ wtokenizer = whisper.get_tokenizer(True, language="vi", task=woptions.task)
 # weights = ["wlarge_kfold_pseudo_spotify_fold7/checkpoint-16520/"]
 # weights = ["wlarge_kfold_pseudo_spotify_fold9/checkpoint-15694/"]
 weights = ["wlarge_kfold_pseudo_spotify_fold5/checkpoint-15694/"]
+# weights = ["wlarge_kfold_pseudo_spotify_fold2/checkpoint-15694/"] 
+# weights = ["wlarge_kfold_pseudo_spotify_fold15/checkpoint-11564/"]
+
 # weights = ["wlarge_kfold_pseudo_spotify_2_new_fold7/checkpoint-14000/"]
 # weights = ["wlarge_kfold_pseudo_spotify_2_fold7/checkpoint-7500/"]
 # weights = ["wlarge_kfold_pseudo_spotify_3_fold7/checkpoint-2898/"]
