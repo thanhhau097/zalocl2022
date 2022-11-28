@@ -1,0 +1,16 @@
+-f https://download.pytorch.org/whl/torch_stable.html
+torch==1.12.1+cu113
+torchaudio===0.12.1+cu113
+jiwer
+pyopenjtalk==0.3.0
+pytorch-lightning==1.7.7
+evaluate==0.2.2
+pandas
+termcolor
+h5py
+matplotlib
+ipympl
+scikit-learn
+ffmpeg
+albumentations
+sentencepiece
